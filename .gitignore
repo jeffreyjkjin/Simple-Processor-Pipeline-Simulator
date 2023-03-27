@@ -30,3 +30,7 @@
 *.exe
 *.out
 *.app
+proj
+compute_fp_1
+compute_int_0
+srv_0
