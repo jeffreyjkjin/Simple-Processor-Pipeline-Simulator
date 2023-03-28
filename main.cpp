@@ -2,6 +2,8 @@
 #include <iostream>
 #include <string>
 
+#include "simulator.hpp"
+
 using namespace std;
  
 int main(int argc, char *argv[]) {
@@ -34,15 +36,14 @@ int main(int argc, char *argv[]) {
 
         return -1;
     }
+    file.close();
 
     // TODO: check if file has valid lines between lineStart and lineEnd
 
-    cout << fileName << endl;
-    cout << startLine << endl;
-    cout << endLine << endl;
-    cout << width << endl;
+    // run simulation
+    Simulator s = Simulator(fileName, startLine, endLine);
+    s.start();
 
-    file.close();
 
     return 0;
 }

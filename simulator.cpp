@@ -18,5 +18,5 @@ Simulator::Simulator(string fileName, int startLine, int endLine) {
 }
 
 void Simulator::start() {
-    iQueue q = iQueue(fileName, startLine, endLine);
+    IQueue q = IQueue(fileName, startLine, endLine);
 }
