@@ -23,4 +23,7 @@ class IQueue {
         // DESC: Removes the first instruction at the front of the queue.
         // POST: Returns the removed instruction.
         Instruction pop();
+        // DESC: Checks whether the queue is empty or not.
+        // POST: Returns boolean for if the queue is empty.
+        bool isEmpty();
 };
