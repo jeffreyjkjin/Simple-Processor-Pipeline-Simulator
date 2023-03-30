@@ -55,3 +55,5 @@ Instruction IQueue::pop() {
 
     return instr;
 }
+
+bool IQueue::isEmpty() { return q.empty(); }
