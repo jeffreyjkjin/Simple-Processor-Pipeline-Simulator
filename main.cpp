@@ -16,13 +16,12 @@ int main(int argc, char *argv[]) {
     // grab parameters
     string fileName = argv[1];
     int startLine = stoi(argv[2]);
-    int endLine = stoi(argv[3]);
+    int instrCount = stoi(argv[3]);
     int width = stoi(argv[4]);
 
-    if (startLine <= 0 || endLine <= 0 || width <= 0 || endLine > startLine) {
+    if (startLine <= 0 || instrCount <= 0 || width <= 0) {
         // validate parameters
         cout << "Invalid parameter provided..." << endl;
-
         return -1;
     }
 
@@ -33,17 +32,13 @@ int main(int argc, char *argv[]) {
     if (!file.is_open()) {
         // if file does not exist
         cout << "File '" << fileName << "' does not exist..." << endl; 
-
         return -1;
     }
     file.close();
 
-    // TODO: check if file has valid lines between lineStart and lineEnd
-
     // run simulation
-    Simulator s = Simulator(fileName, startLine, endLine);
+    Simulator s = Simulator(fileName, startLine, instrCount);
     s.start();
-
 
     return 0;
 }

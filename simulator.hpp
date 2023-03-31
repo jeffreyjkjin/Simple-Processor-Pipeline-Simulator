@@ -8,7 +8,7 @@ class Simulator {
     private:
         string fileName; // Name of the trace file.
         int startLine;   // First line that will be read in the file.
-        int endLine;     // Last line that will be read in the file.
+        int instrCount;  // Number of instructions that will be read from the file.
 
         unsigned totalInstructions; // The total number of instructions executed.
         unsigned clockCycle;        // The current clock cycle of the processor.

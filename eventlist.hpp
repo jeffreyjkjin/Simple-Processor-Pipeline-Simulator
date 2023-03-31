@@ -1,6 +1,8 @@
-#include <instruction.hpp>
+#include "instruction.hpp"
 
 #include <queue>
+
+#include "iqueue.hpp"
 
 #pragma once
 
@@ -39,9 +41,13 @@ class EventList {
         bool StoreMEMBusy;  // Status of write port.
 
     public:
-        // DESC: Constructs a new event list and schedules IF events for the first width-th instructions.
-        EventList();
+        //  DESC: Constructs a new event list and schedules IF events for the first width-th instructions.
+        //   PRE: Assume iQ is not empty.
+        // PARAM: iQ - Queue of instructions.
+        //        width - Number of instructions to be scheduled.
+        EventList(IQueue &iQ, int width);
         // DESC: Removes the first event in the queue.
+        //  PRE: Assume eventlist is not empty.
         // POST: Returns the removed event.
         Event pop();
         void processIF();

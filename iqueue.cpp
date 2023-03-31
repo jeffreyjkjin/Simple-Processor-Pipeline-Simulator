@@ -6,7 +6,7 @@
 
 using namespace std;
 
-IQueue::IQueue(string fileName, int startLine, int endLine) {
+IQueue::IQueue(string fileName, int startLine, int instrCount) {
     q = queue<Instruction>();
 
     ifstream file;
@@ -22,7 +22,7 @@ IQueue::IQueue(string fileName, int startLine, int endLine) {
     }
 
     // read lines from the file
-    while (lineCount < startLine + endLine) {
+    while (lineCount < startLine + instrCount) {
         getline(file, line);
 
         // get tokens from line

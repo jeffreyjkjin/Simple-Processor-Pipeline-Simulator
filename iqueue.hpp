@@ -17,8 +17,8 @@ class IQueue {
         //   PRE: Assumes file is valid.
         // PARAM: file - Trace file that will be read.
         //        lineStart - First line of the file that will be read.
-        //        lineEnd - Last line of the file that will be read.
-        IQueue(string fileName, int startLine, int endLine);
+        //        instrCount - Number of instructions to be read from the file.
+        IQueue(string fileName, int startLine, int instrCount);
         //  PRE: Queue must not be empty.
         // DESC: Removes the first instruction at the front of the queue.
         // POST: Returns the removed instruction.

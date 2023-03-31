@@ -24,14 +24,14 @@ void Simulator::printStatistics() {
 Simulator::Simulator(string fileName, int startLine, int endLine) {
     this->fileName = fileName;
     this->startLine = startLine;
-    this->endLine = endLine;
+    this->instrCount = endLine;
 
     totalInstructions = 0;
     clockCycle = 0;
 }
 
 void Simulator::start() {
-    IQueue iQ = IQueue(fileName, startLine, endLine);
+    IQueue iQ = IQueue(fileName, startLine, instrCount);
     
     // EventList eList = EventList();
     // deque<Instruction> pipeline = deque<Instruction>();
