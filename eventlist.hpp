@@ -25,6 +25,7 @@ class Event {
 
         //  DESC: Creates a new event with the provided parameter.
         // PARAM: stage - The stage that the instruction is currently in.
+        //        instr - The instruction associated with this event.
         Event(Stage stage, Instruction &instr) : stage(stage), instr(instr) {};
 };
 
@@ -42,10 +43,9 @@ class EventList {
 
     public:
         //  DESC: Constructs a new event list and schedules IF events for the first width-th instructions.
-        //   PRE: Assume iQ is not empty.
-        // PARAM: iQ - Queue of instructions.
-        //        width - Number of instructions to be scheduled.
-        EventList(IQueue &iQ, int width);
+        //   PRE: Assume processor has the first width number of instructions.
+        // PARAM: processor - Queue of instructions.
+        EventList(deque<Instruction> processor);
         // DESC: Removes the first event in the queue.
         //  PRE: Assume eventlist is not empty.
         // POST: Returns the removed event.
