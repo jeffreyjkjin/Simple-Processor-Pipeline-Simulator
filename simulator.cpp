@@ -21,10 +21,11 @@ void Simulator::printStatistics() {
     cout << (iHistogram[4] ? (float) iHistogram[4] / (float) totalInstructions : 0) << endl;
 }
 
-Simulator::Simulator(string fileName, int startLine, int endLine) {
+Simulator::Simulator(string fileName, int startLine, int endLine, int width) {
     this->fileName = fileName;
     this->startLine = startLine;
     this->instrCount = endLine;
+    this->width = width;
 
     totalInstructions = 0;
     clockCycle = 0;
@@ -33,11 +34,14 @@ Simulator::Simulator(string fileName, int startLine, int endLine) {
 void Simulator::start() {
     IQueue iQ = IQueue(fileName, startLine, instrCount);
     
-    // EventList eList = EventList();
-    // deque<Instruction> pipeline = deque<Instruction>();
+    // Add the first width instructions into the processor queue
+    deque<Instruction> processor = deque<Instruction>();
+    for (int i = 0; i < width; i++) { processor.push_back(iQ.pop()); }
+
+    EventList eList = EventList(processor);
 
     // while (!iQ.isEmpty()) {
-    //     for (auto it = pipeline.begin(); it != pipeline.end(); it++) {
+    //     for (auto it; processor) {
     //         Event curr = eList.pop();
 
     //         switch (curr.stage) {

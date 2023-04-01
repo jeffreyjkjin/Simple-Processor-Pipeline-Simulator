@@ -9,6 +9,7 @@ class Simulator {
         string fileName; // Name of the trace file.
         int startLine;   // First line that will be read in the file.
         int instrCount;  // Number of instructions that will be read from the file.
+        int width;       // Number of pipelines in the processor.
 
         unsigned totalInstructions; // The total number of instructions executed.
         unsigned clockCycle;        // The current clock cycle of the processor.
@@ -22,7 +23,8 @@ class Simulator {
         // PARAM: file - Trace file that will be read.
         //        startLine - First line of the file that will be read.
         //        endLine - Last line of the file that will be read.
-        Simulator(string fileName, int startLine, int endLine);
+        //        width - Number of pipelines for the processor.
+        Simulator(string fileName, int startLine, int endLine, int width);
         // DESC: Starts the simulation. Keeps track of and prints out statistics periodically.
         void start();
 };

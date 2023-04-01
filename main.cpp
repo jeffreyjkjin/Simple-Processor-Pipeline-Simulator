@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
     file.close();
 
     // run simulation
-    Simulator s = Simulator(fileName, startLine, instrCount);
+    Simulator s = Simulator(fileName, startLine, instrCount, width);
     s.start();
 
     return 0;
