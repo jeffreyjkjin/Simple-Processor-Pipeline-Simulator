@@ -1,6 +1,7 @@
 #include "simulator.hpp"
 
 #include <iostream>
+#include <unordered_map>
 #include <queue>
 
 #include "eventlist.hpp"
@@ -40,28 +41,39 @@ void Simulator::start() {
 
     EventList eList = EventList(processor);
 
-    // while (!iQ.isEmpty()) {
-    //     for (auto it; processor) {
-    //         Event curr = eList.pop();
+    unordered_map<string, unsigned> instrs = unordered_map<string, unsigned>();
 
-    //         switch (curr.stage) {
-    //             case IF:
-    //                 eList.processIF();
-    //                 break;
-    //             case ID:
-    //                 eList.processID();
-    //                 break;
-    //             case EX:
-    //                 eList.processEX();
-    //                 break;
-    //             case MEM:
-    //                 eList.processMEM();
-    //                 break;
-    //             case WB:
-    //                 eList.processWB();
-    //                 break;
-    //         }
-    //     }
-    //     clockCycle++;
-    // }
+    while (!processor.empty()) {
+        
+        cout << "Current Cycle = "  << clockCycle << endl;
+        int numInstrs = processor.size();
+        for (int i = 0; i < numInstrs; i++) {
+            Event curr = eList.front();
+            switch (curr.stage) {
+                case IF:
+                    cout << "IF" << endl;
+                    eList.processIF(iQ, processor, instrs);
+                    break;
+                case ID:
+                    cout << "ID" << endl;
+                    eList.processID(instrs);
+                    break;
+                case EX:
+                    cout << "EX" << endl;
+                    eList.processEX(instrs);
+                    break;
+                case MEM:
+                    cout << "MEM" << endl;
+                    eList.processMEM(instrs);
+                    break;
+                case WB:
+                    cout << "WB" << endl;;
+                    eList.processWB(processor);
+                    totalInstructions++;
+                    break;
+            }
+            eList.pop();
+        }
+        clockCycle++;
+    }
 }
