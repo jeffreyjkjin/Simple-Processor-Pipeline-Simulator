@@ -1,5 +1,6 @@
 #include "instruction.hpp"
 
+#include <unordered_map>
 #include <queue>
 
 #include "iqueue.hpp"
@@ -45,14 +46,16 @@ class EventList {
         //  DESC: Constructs a new event list and schedules IF events for the first width-th instructions.
         //   PRE: Assume processor has the first width number of instructions.
         // PARAM: processor - Queue of instructions.
-        EventList(deque<Instruction> processor);
-        // DESC: Removes the first event in the queue.
+        EventList(deque<Instruction> &processor);
+        // DESC: Removes the first event in the eventlist.
         //  PRE: Assume eventlist is not empty.
-        // POST: Returns the removed event.
-        Event pop();
-        void processIF();
-        void processID();
-        void processEX();
-        void processMEM();
-        void processWB();
+        void pop();
+        // DESC: Returns the first event in the eventlist.
+        //  PRE: Assume eventlist is not empty.
+        Event front(); 
+        void processIF(IQueue &iQ, deque<Instruction> &processor, unordered_map<string, unsigned> &instrs);
+        void processID(unordered_map<string, unsigned> &instrs);
+        void processEX(unordered_map<string, unsigned> &instrs);
+        void processMEM(unordered_map<string, unsigned> &instrs);
+        void processWB(deque<Instruction> &processor);
 };
