@@ -4,6 +4,7 @@
 #include <queue>
 
 #include "iqueue.hpp"
+#include "processor.hpp"
 
 #pragma once
 
@@ -35,27 +36,24 @@ class EventList {
     private:
         queue<Event> q; // Stores the events.
 
-        // Used to check for structural hazards.
-        bool IntegerEXBusy; // Status of integer ALU unit.
-        bool FloatEXBusy;   // Status of floating point unit.
-        bool BranchEXBusy;  // Status of branch execution unit.
-        bool LoadMEMBusy;   // Status of read port.
-        bool StoreMEMBusy;  // Status of write port.
-
     public:
         //  DESC: Constructs a new event list and schedules IF events for the first width-th instructions.
         //   PRE: Assume processor has the first width number of instructions.
-        // PARAM: processor - Queue of instructions.
-        EventList(deque<Instruction> &processor);
+        // PARAM: p - Queue of instructions.
+        EventList(Processor &p);
         // DESC: Removes the first event in the eventlist.
         //  PRE: Assume eventlist is not empty.
         void pop();
         // DESC: Returns the first event in the eventlist.
         //  PRE: Assume eventlist is not empty.
-        Event front(); 
-        void processIF(IQueue &iQ, deque<Instruction> &processor, unordered_map<string, unsigned> &instrs);
-        void processID(unordered_map<string, unsigned> &instrs);
-        void processEX(unordered_map<string, unsigned> &instrs);
-        void processMEM(unordered_map<string, unsigned> &instrs);
-        void processWB(deque<Instruction> &processor);
+        Event front() const;
+        //  DESC: Schedules a new event for the provided instruction at the back of the queue in the IF stage.
+        //   PRE: Assume there is room for the new instruction to enter the IF stage.
+        // PARAM: instr - The instruction that will be added to the queue.
+        void insertIF(Instruction &instr);
+        void processIF(unordered_map<string, unsigned> &instrs, IQueue &iQ, Processor &p);
+        void processID(unsigned clockCycle, unordered_map<string, unsigned> &instrs, Processor &p);
+        void processEX(unsigned clockCycle, unordered_map<string, unsigned> &instrs, Processor &p);
+        void processMEM(unsigned clockCycle, unordered_map<string, unsigned> &instrs, Processor &p);
+        void processWB(Processor &p);
 };

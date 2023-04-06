@@ -1,123 +1,130 @@
 #include "eventlist.hpp"
 
-#include <iostream>
-using namespace std;
-
-EventList::EventList(deque<Instruction> &processor) {
+EventList::EventList(Processor &p) {
     // initialize variables
     q = queue<Event>();
 
-    IntegerEXBusy = false;
-    FloatEXBusy = false;
-    BranchEXBusy = false;
-    LoadMEMBusy = false;
-    StoreMEMBusy = false;
-
     // schedule IFs for the first width number of instructions
-    for (auto instr: processor) { q.push(Event(IF, instr)); }
-    // for (deque<Instruction>::iterator instr = processor.begin(); instr != processor.end(); instr++) { q.push(Event(IF, *instr)); }
- }
+    for (auto instr: p) { 
+        q.push(Event(IF, instr)); 
+        p.sCount[IF]++;
+    }
+}
 
 void EventList::pop() { q.pop(); }
 
-Event EventList::front() { return q.front(); }
+Event EventList::front() const { return q.front(); }
 
-void EventList::processIF(IQueue &iQ, deque<Instruction> &processor, unordered_map<string, unsigned> &instrs) {
+void EventList::insertIF(Instruction &instr) { q.push(Event(IF, instr)); }
+
+void EventList::processIF(unordered_map<string, unsigned> &instrs, IQueue &iQ, Processor &p) {
     // schedule ID event for current instruction
-    Event curr = q.front();
-    q.push(Event(ID, curr.instr));
+    Instruction curr = q.front().instr;
+    q.push(Event(ID, curr));
 
-    instrs[curr.instr.PC] = false;
+    instrs[curr.PC] = 0;
 
-    if (!iQ.isEmpty()) {
-        // schedule next instruction
-        Instruction instr = iQ.pop();
-        q.push(Event(IF, instr));
-        processor.push_back(instr);
-    }
+    p.sCount[IF]--;
+    p.sCount[ID]++;
 }
 
-void EventList::processID(unordered_map<string, unsigned> &instrs) {
-    Instruction instr = q.front().instr;
+void EventList::processID(unsigned clockCycle, unordered_map<string, unsigned> &instrs, Processor &p) {
+    Instruction curr = q.front().instr;
 
-    if (instr.type == Integer || instr.type == Float || instr.type == Branch) {
+    if (curr.type == Integer || curr.type == Float || curr.type == Branch) {
         // checks if corresponding execution unit is available or not
-        if (instr.type == Integer && !IntegerEXBusy) { IntegerEXBusy = true; }
-        else if (instr.type == Float && !FloatEXBusy) { FloatEXBusy = true; }
-        else if (instr.type == Branch && !BranchEXBusy) { BranchEXBusy = true; }
-        else if (instr.type == Integer || instr.type == Float || instr.type == Branch) {
+        if (curr.type == Integer && (p.IntegerEXBusy == "" || p.IntegerEXBusy == curr.PC)) { 
+            p.IntegerEXBusy = curr.PC; 
+        }
+        else if (curr.type == Float && (p.FloatEXBusy == "" || p.FloatEXBusy == curr.PC)) { 
+            p.FloatEXBusy = curr.PC; 
+        }
+        else if (curr.type == Branch && (p.BranchEXBusy == "" || p.BranchEXBusy == curr.PC)) {
+             p.BranchEXBusy = curr.PC; 
+        }
+        else if (curr.type == Integer || curr.type == Float || curr.type == Branch) {
             // reschedule event if execution unit not available
-            q.push(Event(ID, instr));
+            q.push(Event(ID, curr));
             return;
         }
 
         // check if dependencies are satisfied
-        for (auto curr: instr.dependents) {
-            if (instrs[curr] < 1) {
+        for (auto instr: curr.dependents) {
+            if (instrs.find(instr) != instrs.end() && instrs[instr] >= clockCycle) {
                 // reschedule event if dependency not satisified
-                q.push(Event(ID, instr));
+                q.push(Event(ID, curr));
                 return;
             }
         }
     }
 
-    q.push(Event(EX, instr));
+    q.push(Event(EX, curr));
+
+    p.sCount[ID]--;
+    p.sCount[EX]++;
 }
 
-void EventList::processEX(unordered_map<string, unsigned> &instrs) {
-    Instruction instr = q.front().instr;
+void EventList::processEX(unsigned clockCycle, unordered_map<string, unsigned> &instrs, Processor &p) {
+    Instruction curr = q.front().instr;
 
-    if (instr.type == Integer || instr.type == Float || instr.type == Branch) {
+    if (curr.type == Integer || curr.type == Float || curr.type == Branch) {
         // update status of execution units
-        if (instr.type == Integer) { IntegerEXBusy = false; }
-        if (instr.type == Float) { FloatEXBusy = false; }
-        if (instr.type == Branch) { BranchEXBusy = false; }
+        if (curr.type == Integer) { p.IntegerEXBusy = ""; }
+        else if (curr.type == Float) { p.FloatEXBusy = ""; }
+        else if (curr.type == Branch) { p.BranchEXBusy = ""; }
         
-        instrs[instr.PC] = true;
+        instrs[curr.PC] = clockCycle;
     }
     else {
         // check if read/write ports are available or not
-        if (instr.type == Load && !LoadMEMBusy) { LoadMEMBusy = true; }
-        else if (instr.type == Store && !StoreMEMBusy) { StoreMEMBusy = true; }
-        else if (instr.type == Load || instr.type == Store) {
+        if (curr.type == Load && (p.LoadMEMBusy == "" || p.LoadMEMBusy == curr.PC)) {
+             p.LoadMEMBusy = curr.PC; 
+        }
+        else if (curr.type == Store && (p.StoreMEMBusy == "" || p.StoreMEMBusy == curr.PC)) { 
+            p.StoreMEMBusy = curr.PC; 
+        }
+        else if (curr.type == Load || curr.type == Store) {
             // reschedule event if read/write ports not available
-            q.push(Event(EX, instr));
+            q.push(Event(EX, curr));
             return;
         }
 
         // check if dependencies are satisfied
-        for (auto curr: instr.dependents) {
-            if (instrs[curr] < 1) {
+        for (auto instr: curr.dependents) {
+            if (instrs.find(instr) != instrs.end() && instrs[instr] >= clockCycle) {
                 // reschedule event if dependency not satisified
-                q.push(Event(EX, instr));
+                q.push(Event(EX, curr));
                 return;
             }
         }
     }
 
-    q.push(Event(MEM, instr));
+    q.push(Event(MEM, curr));
+
+    p.sCount[EX]--;
+    p.sCount[MEM]++;
 }
 
-void EventList::processMEM(unordered_map<string, unsigned> &instrs) {
-    Instruction instr = q.front().instr;
+void EventList::processMEM(unsigned clockCycle, unordered_map<string, unsigned> &instrs, Processor &p) {
+    Instruction curr = q.front().instr;
 
-    if (instr.type == Load || instr.type == Store) {
+    if (curr.type == Load || curr.type == Store) {
         // update status of execution units
-        if (instr.type == Load) { LoadMEMBusy = false; }
-        if (instr.type == Store) { StoreMEMBusy = false; }
+        if (curr.type == Load) { p.LoadMEMBusy = ""; }
+        else if (curr.type == Store) { p.StoreMEMBusy = ""; }
 
-        instrs[instr.PC] = true;
+        instrs[curr.PC] = clockCycle;
     }
 
-    q.push(Event(WB, instr));
+    q.push(Event(WB, curr));
+
+    p.sCount[MEM]--;
+    p.sCount[WB]++;
 }
 
-void EventList::processWB(deque<Instruction> &processor) {
+void EventList::processWB(Processor &p) {
     Instruction instr = q.front().instr;
-    for (auto curr = processor.begin(); curr != processor.end(); curr++) {
-        if ((*curr).PC == instr.PC && (*curr).type == instr.type) { 
-            processor.erase(curr); 
-            return;
-        }
-    }
+    p.remove(instr);
+
+    p.sCount[WB]--;
 }
