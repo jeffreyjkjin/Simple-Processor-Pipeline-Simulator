@@ -1,79 +1,108 @@
 #include "simulator.hpp"
 
+#include <iomanip>
 #include <iostream>
 #include <unordered_map>
 #include <queue>
 
 #include "eventlist.hpp"
 #include "iqueue.hpp"
+#include "processor.hpp"
 
-void Simulator::printStatistics() {
-    cout << "Current Execution Time: " << clockCycle << endl;
+void Simulator::printStatistics() const {
+    // compute percentages for histogram
+    double histogram[5];
+
+    for (unsigned i = 0; i < 5; i++) {
+        // check if instruction count is zero
+        if (iCount[i]) { histogram[i] = ((double) iCount[i] * 100) / (double) totalInstructions; }
+        else { histogram[i] = 0; }
+    }
+
+    cout << ((totalInstructions == startLine + instrCount - 1) ? "Final " : "Current ");
+    cout << "Execution Time: " << clockCycle << " Cycles" << endl;
     cout << "Histogram of Instructions" << endl;
-    cout << "Integer: ";
-    cout << (iHistogram[0] ? (float) iHistogram[0] / (float) totalInstructions : 0) << endl;
-    cout << "Float Point: ";
-    cout << (iHistogram[1] ? (float) iHistogram[1] / (float) totalInstructions : 0) << endl;
-    cout << "Branch: ";
-    cout << (iHistogram[2] ? (float) iHistogram[2] / (float) totalInstructions : 0) << endl;
-    cout << "Load: ";
-    cout << (iHistogram[3] ? (float) iHistogram[3] / (float) totalInstructions : 0) << endl;
-    cout << "Store: ";
-    cout << (iHistogram[4] ? (float) iHistogram[4] / (float) totalInstructions : 0) << endl;
+    cout << "Integer: " << histogram[0] << "%" << endl;
+    cout << "Float: " << histogram[1] << "%" << endl;
+    cout << "Branch: " << histogram[2] << "%" << endl;
+    cout << "Load: " << histogram[3] << "%" << endl;
+    cout << "Store: " << histogram[4] << "%" << endl;
 }
 
-Simulator::Simulator(string fileName, int startLine, int endLine, int width) {
+Simulator::Simulator(string fileName, int startLine, int instrCount, int width) {
+    // initalize attributes
     this->fileName = fileName;
     this->startLine = startLine;
-    this->instrCount = endLine;
+    this->instrCount = instrCount;
     this->width = width;
 
     totalInstructions = 0;
     clockCycle = 0;
+    for (unsigned i = 0; i < 5; i++) { iCount[i] = 0; }
+
+    // set decimal placements for printing statistics
+    cout << fixed << setprecision(4);
 }
 
 void Simulator::start() {
     IQueue iQ = IQueue(fileName, startLine, instrCount);
     
-    // Add the first width instructions into the processor queue
-    deque<Instruction> processor = deque<Instruction>();
-    for (int i = 0; i < width; i++) { processor.push_back(iQ.pop()); }
+    Processor p = Processor(iQ, width);
 
-    EventList eList = EventList(processor);
+    EventList eList = EventList(p);
 
     unordered_map<string, unsigned> instrs = unordered_map<string, unsigned>();
 
-    while (!processor.empty()) {
-        
+    // while (p.size()) {
+    while (p.size() || !iQ.isEmpty()) {
         cout << "Current Cycle = "  << clockCycle << endl;
-        int numInstrs = processor.size();
+    
+        int numInstrs = p.size();
         for (int i = 0; i < numInstrs; i++) {
             Event curr = eList.front();
+
             switch (curr.stage) {
                 case IF:
-                    cout << "IF" << endl;
-                    eList.processIF(iQ, processor, instrs);
+                    cout << "IF - " << curr.instr.PC << " - " << curr.instr.type << endl;
+                    eList.processIF(instrs, iQ, p);
                     break;
                 case ID:
-                    cout << "ID" << endl;
-                    eList.processID(instrs);
+                    cout << "ID - " << curr.instr.PC << " - " << curr.instr.type << endl;
+                    eList.processID(clockCycle, instrs, p);
                     break;
                 case EX:
-                    cout << "EX" << endl;
-                    eList.processEX(instrs);
+                    cout << "EX - " << curr.instr.PC << " - " << curr.instr.type << endl;
+                    eList.processEX(clockCycle, instrs, p);
                     break;
                 case MEM:
-                    cout << "MEM" << endl;
-                    eList.processMEM(instrs);
+                    cout << "MEM - " << curr.instr.PC << " - " << curr.instr.type << endl;
+                    eList.processMEM(clockCycle, instrs, p);
                     break;
                 case WB:
-                    cout << "WB" << endl;;
-                    eList.processWB(processor);
+                    cout << "WB - " << curr.instr.PC << " - " << curr.instr.type << endl;
+                    eList.processWB(p);
+
+                    iCount[curr.instr.type - 1]++;
                     totalInstructions++;
                     break;
             }
             eList.pop();
         }
+
+        // send next width number of instructions into processor
+        for (unsigned i = 0; i < width; i++) {
+            if (!iQ.isEmpty()) {
+                Instruction curr = iQ.front();
+                if (p.insertIF(curr, width)) { 
+                    // only send instruction if there is room in the IF stage
+                    eList.insertIF(curr);
+                    iQ.pop(); 
+                }
+            }
+        }
+
         clockCycle++;
     }
+
+    printStatistics();
 }
