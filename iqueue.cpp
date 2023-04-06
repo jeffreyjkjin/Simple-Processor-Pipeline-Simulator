@@ -1,6 +1,5 @@
 #include "iqueue.hpp"
 
-#include <iostream>
 #include <sstream>
 #include <vector>
 
@@ -49,11 +48,8 @@ IQueue::IQueue(string fileName, int startLine, int instrCount) {
     file.close();
 }
 
-Instruction IQueue::pop() {
-    Instruction instr = q.front();
-    q.pop();
+void IQueue::pop() { q.pop(); }
 
-    return instr;
-}
+Instruction IQueue::front() const { return q.front(); }
 
-bool IQueue::isEmpty() { return q.empty(); }
+bool IQueue::isEmpty() const { return q.empty(); }
