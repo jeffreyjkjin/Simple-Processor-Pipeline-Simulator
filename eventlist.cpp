@@ -8,6 +8,12 @@ EventList::EventList(Processor &p) {
     for (auto instr: p) { 
         q.push(Event(IF, instr)); 
         p.sCount[IF]++;
+
+        if (instr.type == Branch) {
+            // if branch is fetched, stop fetching instructions
+            p.BranchBusy = instr.PC;
+            break;
+        }
     }
 }
 
@@ -31,18 +37,15 @@ void EventList::processIF(unordered_map<string, unsigned> &instrs, IQueue &iQ, P
 void EventList::processID(unsigned clockCycle, unordered_map<string, unsigned> &instrs, Processor &p) {
     Instruction curr = q.front().instr;
 
-    if (curr.type == Integer || curr.type == Float || curr.type == Branch) {
+    if (curr.type == Integer || curr.type == Float) {
         // checks if corresponding execution unit is available or not
-        if (curr.type == Integer && (p.IntegerEXBusy == "" || p.IntegerEXBusy == curr.PC)) { 
-            p.IntegerEXBusy = curr.PC; 
+        if (curr.type == Integer && (p.IntegerBusy == "" || p.IntegerBusy == curr.PC)) { 
+            p.IntegerBusy = curr.PC; 
         }
-        else if (curr.type == Float && (p.FloatEXBusy == "" || p.FloatEXBusy == curr.PC)) { 
-            p.FloatEXBusy = curr.PC; 
+        else if (curr.type == Float && (p.FloatBusy == "" || p.FloatBusy == curr.PC)) { 
+            p.FloatBusy = curr.PC; 
         }
-        else if (curr.type == Branch && (p.BranchEXBusy == "" || p.BranchEXBusy == curr.PC)) {
-             p.BranchEXBusy = curr.PC; 
-        }
-        else if (curr.type == Integer || curr.type == Float || curr.type == Branch) {
+        else if (curr.type == Integer || curr.type == Float) {
             // reschedule event if execution unit not available
             q.push(Event(ID, curr));
             return;
@@ -69,19 +72,19 @@ void EventList::processEX(unsigned clockCycle, unordered_map<string, unsigned> &
 
     if (curr.type == Integer || curr.type == Float || curr.type == Branch) {
         // update status of execution units
-        if (curr.type == Integer) { p.IntegerEXBusy = ""; }
-        else if (curr.type == Float) { p.FloatEXBusy = ""; }
-        else if (curr.type == Branch) { p.BranchEXBusy = ""; }
+        if (curr.type == Integer) { p.IntegerBusy = ""; }
+        else if (curr.type == Float) { p.FloatBusy = ""; }
+        else if (curr.type == Branch) { p.BranchBusy = ""; }
         
         instrs[curr.PC] = clockCycle;
     }
     else {
         // check if read/write ports are available or not
-        if (curr.type == Load && (p.LoadMEMBusy == "" || p.LoadMEMBusy == curr.PC)) {
-             p.LoadMEMBusy = curr.PC; 
+        if (curr.type == Load && (p.LoadBusy == "" || p.LoadBusy == curr.PC)) {
+             p.LoadBusy = curr.PC; 
         }
-        else if (curr.type == Store && (p.StoreMEMBusy == "" || p.StoreMEMBusy == curr.PC)) { 
-            p.StoreMEMBusy = curr.PC; 
+        else if (curr.type == Store && (p.StoreBusy == "" || p.StoreBusy == curr.PC)) { 
+            p.StoreBusy = curr.PC; 
         }
         else if (curr.type == Load || curr.type == Store) {
             // reschedule event if read/write ports not available
@@ -110,8 +113,8 @@ void EventList::processMEM(unsigned clockCycle, unordered_map<string, unsigned> 
 
     if (curr.type == Load || curr.type == Store) {
         // update status of execution units
-        if (curr.type == Load) { p.LoadMEMBusy = ""; }
-        else if (curr.type == Store) { p.StoreMEMBusy = ""; }
+        if (curr.type == Load) { p.LoadBusy = ""; }
+        else if (curr.type == Store) { p.StoreBusy = ""; }
 
         instrs[curr.PC] = clockCycle;
     }

@@ -10,7 +10,7 @@ using namespace std;
 // Queue of instructions read from the provided file.
 class IQueue {
     private:
-        queue<Instruction> q; // Queue that holds the program's instructions.
+        queue<Instruction> q; // Holds the program's instructions.
 
     public:
         //  DESC: Populates a queue with instructions from the file.
@@ -26,6 +26,5 @@ class IQueue {
         //  PRE: Queue must not be empty.
         Instruction front() const;
         // DESC: Checks whether the queue is empty or not.
-        // POST: Returns boolean for if the queue is empty.
         bool isEmpty() const;
 };

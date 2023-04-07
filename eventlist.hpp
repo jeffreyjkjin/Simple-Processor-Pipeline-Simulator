@@ -38,7 +38,7 @@ class EventList {
 
     public:
         //  DESC: Constructs a new event list and schedules IF events for the first width-th 
-        //        instructions fetched by the processor.
+        //        instructions fetched by the processor; stops fetching if a branch is fetched.
         //   PRE: Assume processor has the first width-th number of instructions.
         // PARAM: p - Queue of instructions.
         EventList(Processor &p);
