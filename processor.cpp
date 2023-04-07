@@ -8,11 +8,12 @@ Processor::Processor(IQueue &iQ, int width) {
     
     for (unsigned i = 0; i < 5; i++) { sCount[i] = 0; }
 
-    IntegerEXBusy = "";
-    FloatEXBusy = "";  
-    BranchEXBusy = ""; 
-    LoadMEMBusy = "";
-    StoreMEMBusy = "";
+    IntegerBusy = "";
+    FloatBusy = "";  
+    LoadBusy = "";
+    StoreBusy = "";
+
+    BranchBusy = ""; 
 
     // add first width number of instructions
     for (unsigned i = 0; i < width; i++) { 
@@ -25,9 +26,12 @@ Processor::Processor(IQueue &iQ, int width) {
 }
 
 bool Processor::insertIF(Instruction instr, int width) {
-    if (sCount[0] == width) { return false; }
+    // do not insert if IF stage full or branch is in stage IF, ID or EX
+    if (sCount[0] == width || BranchBusy != "") { return false; }
     q.push_back(instr);
     sCount[0]++;
+
+    if (instr.type == Branch) { BranchBusy = instr.PC; }
 
     return true;
 }
