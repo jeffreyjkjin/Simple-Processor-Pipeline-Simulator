@@ -22,7 +22,7 @@ typedef enum {
 // Events in the event list.
 class Event {
     public:
-        Stage stage;       // Determines what the simulator will do next with the associated instruction.
+        Stage stage;       // The current stage that the associated instruction is in.
         Instruction instr; // The instruction associated with this event. 
 
         //  DESC: Creates a new event with the provided parameter.
@@ -37,8 +37,9 @@ class EventList {
         queue<Event> q; // Stores the events.
 
     public:
-        //  DESC: Constructs a new event list and schedules IF events for the first width-th instructions.
-        //   PRE: Assume processor has the first width number of instructions.
+        //  DESC: Constructs a new event list and schedules IF events for the first width-th 
+        //        instructions fetched by the processor.
+        //   PRE: Assume processor has the first width-th number of instructions.
         // PARAM: p - Queue of instructions.
         EventList(Processor &p);
         // DESC: Removes the first event in the eventlist.
@@ -47,7 +48,8 @@ class EventList {
         // DESC: Returns the first event in the eventlist.
         //  PRE: Assume eventlist is not empty.
         Event front() const;
-        //  DESC: Schedules a new event for the provided instruction at the back of the queue in the IF stage.
+        //  DESC: Schedules a new event for the provided instruction at the back of the queue in 
+        //        the IF stage.
         //   PRE: Assume there is room for the new instruction to enter the IF stage.
         // PARAM: instr - The instruction that will be added to the queue.
         void insertIF(Instruction &instr);

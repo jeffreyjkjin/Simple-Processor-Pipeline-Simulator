@@ -26,5 +26,6 @@ class Simulator {
         //        width - Number of pipelines for the processor.
         Simulator(string fileName, int startLine, int instrCount, int width);
         // DESC: Starts the simulation. Keeps track of and prints out statistics periodically.
+        //  PRE: Assumes all simulation parameters are valid.
         void start();
 };

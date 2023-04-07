@@ -17,8 +17,8 @@ typedef enum {
 // Contains the attributes of a single instruction.
 class Instruction {
     public:
-        string PC;                 // Base 10 (from hexadecimal) value representing the instruction address.
-        iType type;                // The type of the instruction.
+        string PC;                 // Hexadecimal value representing the instruction's address.
+        iType type;                // The type of the instruction; decides which execution units will be used. 
         vector<string> dependents; // List of PC values of instructions that the current instruction is dependent on.
 
         //  DESC: Creates a new instruction with the provided parameters.

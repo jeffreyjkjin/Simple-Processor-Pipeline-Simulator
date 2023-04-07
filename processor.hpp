@@ -13,17 +13,20 @@ class Processor {
         unsigned sCount[5]; // Keeps track of number of instructions in each stage.
 
         // Used to check for structural hazards.
-        string IntegerEXBusy; // PC of instruction using the integer ALU unit.
-        string FloatEXBusy;   // PC of instruction using the floating point unit.
-        string BranchEXBusy;  // PC of instruction using the branch execution unit.
-        string LoadMEMBusy;   // PC of instruction using the read port.
-        string StoreMEMBusy;  // PC of instruction using the write port.
+        string IntegerBusy; // PC of instruction using the integer ALU unit.
+        string FloatBusy;   // PC of instruction using the floating point unit.
+        string LoadBusy;    // PC of instruction using the read port.
+        string StoreBusy;   // PC of instruction using the write port.
 
+        // Used to check for control hazard 
+        string BranchBusy;  // PC of instruction using the branch execution unit. 
+        
         //  DESC: Creates a new processor and queues up the first width number of instructions.
         // PARAM: iQ - A queue with instructions that will be sent to the processor queue.
         //        width - The maximum number of instructions that can be in the IF stage.
         Processor(IQueue &iQ, int width);
-        //  DESC: Sends an instruction to the processor if there is room in the IF stage.
+        //  DESC: Sends an instruction to the processor if there is room in the IF stage and a 
+        //        branch instruction isn't being executed.
         // PARAM: instr - The instruction that will be added.
         //        width - The maximum number of instructions that can be in the IF stage.
         //  POST: Returns if the instruction was added successfully.
