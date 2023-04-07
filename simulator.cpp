@@ -12,15 +12,13 @@
 void Simulator::printStatistics() const {
     // compute percentages for histogram
     double histogram[5];
-
     for (unsigned i = 0; i < 5; i++) {
         // check if instruction count is zero
         if (iCount[i]) { histogram[i] = ((double) iCount[i] * 100) / (double) totalInstructions; }
         else { histogram[i] = 0; }
     }
 
-    cout << ((totalInstructions == startLine + instrCount - 1) ? "Final " : "Current ");
-    cout << "Execution Time: " << clockCycle << " Cycles" << endl;
+    cout << "Execution Time (Cycles): " << clockCycle << endl;
     cout << "Histogram of Instructions" << endl;
     cout << "Integer: " << histogram[0] << "%" << endl;
     cout << "Float: " << histogram[1] << "%" << endl;
@@ -53,33 +51,28 @@ void Simulator::start() {
 
     unordered_map<string, unsigned> instrs = unordered_map<string, unsigned>();
 
-    // while (p.size()) {
+    // event loop keeps running while there still instructions in processor or instruction queue
     while (p.size() || !iQ.isEmpty()) {
-        cout << "Current Cycle = "  << clockCycle << endl;
     
         int numInstrs = p.size();
         for (int i = 0; i < numInstrs; i++) {
+            // processes every instruction in the processor
             Event curr = eList.front();
 
             switch (curr.stage) {
                 case IF:
-                    cout << "IF - " << curr.instr.PC << " - " << curr.instr.type << endl;
                     eList.processIF(instrs, iQ, p);
                     break;
                 case ID:
-                    cout << "ID - " << curr.instr.PC << " - " << curr.instr.type << endl;
                     eList.processID(clockCycle, instrs, p);
                     break;
                 case EX:
-                    cout << "EX - " << curr.instr.PC << " - " << curr.instr.type << endl;
                     eList.processEX(clockCycle, instrs, p);
                     break;
                 case MEM:
-                    cout << "MEM - " << curr.instr.PC << " - " << curr.instr.type << endl;
                     eList.processMEM(clockCycle, instrs, p);
                     break;
                 case WB:
-                    cout << "WB - " << curr.instr.PC << " - " << curr.instr.type << endl;
                     eList.processWB(p);
 
                     iCount[curr.instr.type - 1]++;
@@ -89,7 +82,7 @@ void Simulator::start() {
             eList.pop();
         }
 
-        // send next width number of instructions into processor
+        // send next width-th number of instructions into processor
         for (unsigned i = 0; i < width; i++) {
             if (!iQ.isEmpty()) {
                 Instruction curr = iQ.front();
