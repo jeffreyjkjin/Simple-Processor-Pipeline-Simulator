@@ -18,8 +18,15 @@ Processor::Processor(IQueue &iQ, int width) {
     // add first width number of instructions
     for (unsigned i = 0; i < width; i++) { 
         if (!iQ.isEmpty()) { 
-            q.push_back(iQ.front()); 
+            Instruction curr = iQ.front();
+            q.push_back(curr); 
             iQ.pop();
+
+            if (curr.type == Branch) {
+                // stop fetching instructions if latest instruction is a branch
+                BranchBusy = curr.PC;
+                return;
+            }
         }
     }
 
