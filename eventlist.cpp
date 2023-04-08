@@ -8,12 +8,6 @@ EventList::EventList(Processor &p) {
     for (auto instr: p) { 
         q.push(Event(IF, instr)); 
         p.sCount[IF]++;
-
-        if (instr.type == Branch) {
-            // if branch is fetched, stop fetching instructions
-            p.BranchBusy = instr.PC;
-            break;
-        }
     }
 }
 
@@ -23,9 +17,16 @@ Event EventList::front() const { return q.front(); }
 
 void EventList::insertIF(Instruction &instr) { q.push(Event(IF, instr)); }
 
-void EventList::processIF(unordered_map<string, unsigned> &instrs, IQueue &iQ, Processor &p) {
-    // schedule ID event for current instruction
+void EventList::processIF(unordered_map<string, unsigned> &instrs, Processor &p, int width) {
     Instruction curr = q.front().instr;
+    
+    if (p.sCount[ID] == width) {
+        // reschedule current instruction if ID stage is full 
+        q.push(Event(IF, curr));
+        return;
+    }
+    
+    // schedule ID event for current instruction
     q.push(Event(ID, curr));
 
     instrs[curr.PC] = 0;
@@ -34,8 +35,14 @@ void EventList::processIF(unordered_map<string, unsigned> &instrs, IQueue &iQ, P
     p.sCount[ID]++;
 }
 
-void EventList::processID(unsigned clockCycle, unordered_map<string, unsigned> &instrs, Processor &p) {
+void EventList::processID(unsigned clockCycle, unordered_map<string, unsigned> &instrs, Processor &p, int width) {
     Instruction curr = q.front().instr;
+
+    if (p.sCount[EX] == width) {
+        // reschedule current instruction if EX stage is full
+        q.push(Event(ID, curr));
+        return;
+    }
 
     if (curr.type == Integer || curr.type == Float) {
         // checks if corresponding execution unit is available or not
@@ -45,7 +52,7 @@ void EventList::processID(unsigned clockCycle, unordered_map<string, unsigned> &
         else if (curr.type == Float && (p.FloatBusy == "" || p.FloatBusy == curr.PC)) { 
             p.FloatBusy = curr.PC; 
         }
-        else if (curr.type == Integer || curr.type == Float) {
+        else {
             // reschedule event if execution unit not available
             q.push(Event(ID, curr));
             return;
@@ -67,8 +74,14 @@ void EventList::processID(unsigned clockCycle, unordered_map<string, unsigned> &
     p.sCount[EX]++;
 }
 
-void EventList::processEX(unsigned clockCycle, unordered_map<string, unsigned> &instrs, Processor &p) {
+void EventList::processEX(unsigned clockCycle, unordered_map<string, unsigned> &instrs, Processor &p, int width) {
     Instruction curr = q.front().instr;
+
+    if (p.sCount[MEM] == width) {
+        // reschedule current instruction if MEM stage is full
+        q.push(Event(EX, curr));
+        return;
+    }
 
     if (curr.type == Integer || curr.type == Float || curr.type == Branch) {
         // update status of execution units
@@ -86,7 +99,7 @@ void EventList::processEX(unsigned clockCycle, unordered_map<string, unsigned> &
         else if (curr.type == Store && (p.StoreBusy == "" || p.StoreBusy == curr.PC)) { 
             p.StoreBusy = curr.PC; 
         }
-        else if (curr.type == Load || curr.type == Store) {
+        else {
             // reschedule event if read/write ports not available
             q.push(Event(EX, curr));
             return;
@@ -108,8 +121,14 @@ void EventList::processEX(unsigned clockCycle, unordered_map<string, unsigned> &
     p.sCount[MEM]++;
 }
 
-void EventList::processMEM(unsigned clockCycle, unordered_map<string, unsigned> &instrs, Processor &p) {
+void EventList::processMEM(unsigned clockCycle, unordered_map<string, unsigned> &instrs, Processor &p, int width) {
     Instruction curr = q.front().instr;
+
+    if (p.sCount[WB] == width) {
+        // reschedule current instruction if WB stage is full
+        q.push(Event(MEM, curr));
+        return;
+    }
 
     if (curr.type == Load || curr.type == Store) {
         // update status of execution units
