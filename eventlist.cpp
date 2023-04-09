@@ -45,19 +45,6 @@ void EventList::processID(unsigned clockCycle, unordered_map<string, unsigned> &
     }
 
     if (instr.type == Integer || instr.type == Float) {
-        // checks if corresponding execution unit is available or not
-        if (instr.type == Integer && (p.IntegerBusy == "" || p.IntegerBusy == instr.PC)) { 
-            p.IntegerBusy = instr.PC; 
-        }
-        else if (instr.type == Float && (p.FloatBusy == "" || p.FloatBusy == instr.PC)) { 
-            p.FloatBusy = instr.PC; 
-        }
-        else {
-            // reschedule event if execution unit not available
-            q.push(Event(ID, instr, e.pipeline));
-            return;
-        }
-
         // check if dependencies are satisfied
         for (auto curr: instr.dependents) {
             if (instrs.find(curr) != instrs.end() && instrs[curr] >= clockCycle) {
@@ -66,6 +53,17 @@ void EventList::processID(unsigned clockCycle, unordered_map<string, unsigned> &
                 return;
             }
         }
+
+        // checks if corresponding execution unit is available or not
+        if ((instr.type == Integer && p.IntegerBusy != "") || (instr.type == Float && p.FloatBusy != "")) {
+            // reschedule event if execution unit not available
+            q.push(Event(ID, instr, e.pipeline));
+            return;
+        }
+
+        // occupy corresponding execution unit
+        if (instr.type == Integer) { p.IntegerBusy = instr.PC; }
+        else { p.FloatBusy = instr.PC; }
     }
 
     q.push(Event(EX, instr, e.pipeline));
@@ -88,24 +86,11 @@ void EventList::processEX(unsigned clockCycle, unordered_map<string, unsigned> &
         // update status of execution units
         if (instr.type == Integer) { p.IntegerBusy = ""; }
         else if (instr.type == Float) { p.FloatBusy = ""; }
-        else if (instr.type == Branch) { p.BranchBusy = ""; }
+        else { p.BranchBusy = ""; }
         
         instrs[instr.PC] = clockCycle;
     }
     else {
-        // check if read/write ports are available or not
-        if (instr.type == Load && (p.LoadBusy == "" || p.LoadBusy == instr.PC)) {
-             p.LoadBusy = instr.PC; 
-        }
-        else if (instr.type == Store && (p.StoreBusy == "" || p.StoreBusy == instr.PC)) { 
-            p.StoreBusy = instr.PC; 
-        }
-        else {
-            // reschedule event if read/write ports not available
-            q.push(Event(EX, instr, e.pipeline));
-            return;
-        }
-
         // check if dependencies are satisfied
         for (auto curr: instr.dependents) {
             if (instrs.find(curr) != instrs.end() && instrs[curr] >= clockCycle) {
@@ -114,6 +99,17 @@ void EventList::processEX(unsigned clockCycle, unordered_map<string, unsigned> &
                 return;
             }
         }
+
+        // check if read/write ports are available or not
+        if ((instr.type == Load && p.LoadBusy != "") || (instr.type == Store && p.StoreBusy != "")) {
+            // reschedule event if read/write ports not available
+            q.push(Event(EX, instr, e.pipeline));
+            return;            
+        }
+
+        // occupy corresponding read/write ports
+        if (instr.type == Load) { p.LoadBusy = instr.PC; }
+        else { p.StoreBusy = instr.PC; }
     }
 
     q.push(Event(MEM, instr, e.pipeline));
@@ -133,9 +129,9 @@ void EventList::processMEM(unsigned clockCycle, unordered_map<string, unsigned> 
     }
 
     if (instr.type == Load || instr.type == Store) {
-        // update status of execution units
+        // update status of read/write ports
         if (instr.type == Load) { p.LoadBusy = ""; }
-        else if (instr.type == Store) { p.StoreBusy = ""; }
+        else { p.StoreBusy = ""; }
 
         instrs[instr.PC] = clockCycle;
     }
