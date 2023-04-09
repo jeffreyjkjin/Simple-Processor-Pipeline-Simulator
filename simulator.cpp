@@ -49,7 +49,7 @@ void Simulator::start() {
 
     EventList eList = EventList(p);
 
-    unordered_map<string, unsigned> instrs = unordered_map<string, unsigned>();
+    unordered_map<string, unsigned> instrs;
 
     // event loop keeps running while there still instructions in processor or instruction queue
     while (p.size() || !iQ.isEmpty()) {
@@ -61,7 +61,7 @@ void Simulator::start() {
 
             switch (curr.stage) {
                 case IF:
-                    eList.processIF(instrs, iQ, p);
+                    eList.processIF(instrs, p);
                     break;
                 case ID:
                     eList.processID(clockCycle, instrs, p);
@@ -85,10 +85,12 @@ void Simulator::start() {
         // send next width-th number of instructions into processor
         for (unsigned i = 0; i < width; i++) {
             if (!iQ.isEmpty()) {
-                Instruction curr = iQ.front();
-                if (p.insertIF(curr, width)) { 
+                Instruction instr = iQ.front();
+                int pipeline = p.insertIF(instr, width);
+                
+                if (pipeline >= 0) { 
                     // only send instruction if there is room in the IF stage
-                    eList.insertIF(curr);
+                    eList.insertIF(instr, pipeline);
                     iQ.pop(); 
                 }
             }
