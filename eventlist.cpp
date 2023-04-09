@@ -1,13 +1,12 @@
 #include "eventlist.hpp"
 
 EventList::EventList(Processor &p) {
-    // initialize variables
-    q = queue<Event>();
-
-    // schedule IFs for the first width number of instructions
+    // schedule IFs for the first width-th number of instructions
+    unsigned i = 0;
     for (auto instr: p) { 
-        q.push(Event(IF, instr)); 
-        p.sCount[IF]++;
+        q.push(Event(IF, instr, i));
+
+        i++;
     }
 }
 
@@ -15,138 +14,142 @@ void EventList::pop() { q.pop(); }
 
 Event EventList::front() const { return q.front(); }
 
-void EventList::insertIF(Instruction &instr) { q.push(Event(IF, instr)); }
+void EventList::insertIF(Instruction &instr, unsigned pipeline) { q.push(Event(IF, instr, pipeline)); }
 
-void EventList::processIF(unordered_map<string, unsigned> &instrs, Processor &p, int width) {
-    Instruction curr = q.front().instr;
+void EventList::processIF(unordered_map<string, unsigned> &instrs, Processor &p) {
+    Event e = q.front();
+    Instruction instr = e.instr;
     
-    if (p.sCount[ID] == width) {
-        // reschedule current instruction if ID stage is full 
-        q.push(Event(IF, curr));
+    if (p.pipelines[e.pipeline][ID]) {
+        q.push(Event(IF, instr, e.pipeline));
         return;
     }
     
     // schedule ID event for current instruction
-    q.push(Event(ID, curr));
+    q.push(Event(ID, instr, e.pipeline));
 
-    instrs[curr.PC] = 0;
+    instrs[instr.PC] = 0;
 
-    p.sCount[IF]--;
-    p.sCount[ID]++;
+    p.pipelines[e.pipeline][IF] = false;
+    p.pipelines[e.pipeline][ID] = true;
 }
 
-void EventList::processID(unsigned clockCycle, unordered_map<string, unsigned> &instrs, Processor &p, int width) {
-    Instruction curr = q.front().instr;
+void EventList::processID(unsigned clockCycle, unordered_map<string, unsigned> &instrs, Processor &p) {
+    Event e = q.front();
+    Instruction instr = e.instr;
 
-    if (p.sCount[EX] == width) {
+    if (p.pipelines[e.pipeline][EX]) {
         // reschedule current instruction if EX stage is full
-        q.push(Event(ID, curr));
+        q.push(Event(ID, instr, e.pipeline));
         return;
     }
 
-    if (curr.type == Integer || curr.type == Float) {
+    if (instr.type == Integer || instr.type == Float) {
         // checks if corresponding execution unit is available or not
-        if (curr.type == Integer && (p.IntegerBusy == "" || p.IntegerBusy == curr.PC)) { 
-            p.IntegerBusy = curr.PC; 
+        if (instr.type == Integer && (p.IntegerBusy == "" || p.IntegerBusy == instr.PC)) { 
+            p.IntegerBusy = instr.PC; 
         }
-        else if (curr.type == Float && (p.FloatBusy == "" || p.FloatBusy == curr.PC)) { 
-            p.FloatBusy = curr.PC; 
+        else if (instr.type == Float && (p.FloatBusy == "" || p.FloatBusy == instr.PC)) { 
+            p.FloatBusy = instr.PC; 
         }
         else {
             // reschedule event if execution unit not available
-            q.push(Event(ID, curr));
+            q.push(Event(ID, instr, e.pipeline));
             return;
         }
 
         // check if dependencies are satisfied
-        for (auto instr: curr.dependents) {
-            if (instrs.find(instr) != instrs.end() && instrs[instr] >= clockCycle) {
+        for (auto curr: instr.dependents) {
+            if (instrs.find(curr) != instrs.end() && instrs[curr] >= clockCycle) {
                 // reschedule event if dependency not satisified
-                q.push(Event(ID, curr));
+                q.push(Event(ID, instr, e.pipeline));
                 return;
             }
         }
     }
 
-    q.push(Event(EX, curr));
+    q.push(Event(EX, instr, e.pipeline));
 
-    p.sCount[ID]--;
-    p.sCount[EX]++;
+    p.pipelines[e.pipeline][ID] = false;
+    p.pipelines[e.pipeline][EX] = true;
 }
 
-void EventList::processEX(unsigned clockCycle, unordered_map<string, unsigned> &instrs, Processor &p, int width) {
-    Instruction curr = q.front().instr;
+void EventList::processEX(unsigned clockCycle, unordered_map<string, unsigned> &instrs, Processor &p) {
+    Event e = q.front();
+    Instruction instr = q.front().instr;
 
-    if (p.sCount[MEM] == width) {
+    if (p.pipelines[e.pipeline][MEM]) {
         // reschedule current instruction if MEM stage is full
-        q.push(Event(EX, curr));
+        q.push(Event(EX, instr, e.pipeline));
         return;
     }
 
-    if (curr.type == Integer || curr.type == Float || curr.type == Branch) {
+    if (instr.type == Integer || instr.type == Float || instr.type == Branch) {
         // update status of execution units
-        if (curr.type == Integer) { p.IntegerBusy = ""; }
-        else if (curr.type == Float) { p.FloatBusy = ""; }
-        else if (curr.type == Branch) { p.BranchBusy = ""; }
+        if (instr.type == Integer) { p.IntegerBusy = ""; }
+        else if (instr.type == Float) { p.FloatBusy = ""; }
+        else if (instr.type == Branch) { p.BranchBusy = ""; }
         
-        instrs[curr.PC] = clockCycle;
+        instrs[instr.PC] = clockCycle;
     }
     else {
         // check if read/write ports are available or not
-        if (curr.type == Load && (p.LoadBusy == "" || p.LoadBusy == curr.PC)) {
-             p.LoadBusy = curr.PC; 
+        if (instr.type == Load && (p.LoadBusy == "" || p.LoadBusy == instr.PC)) {
+             p.LoadBusy = instr.PC; 
         }
-        else if (curr.type == Store && (p.StoreBusy == "" || p.StoreBusy == curr.PC)) { 
-            p.StoreBusy = curr.PC; 
+        else if (instr.type == Store && (p.StoreBusy == "" || p.StoreBusy == instr.PC)) { 
+            p.StoreBusy = instr.PC; 
         }
         else {
             // reschedule event if read/write ports not available
-            q.push(Event(EX, curr));
+            q.push(Event(EX, instr, e.pipeline));
             return;
         }
 
         // check if dependencies are satisfied
-        for (auto instr: curr.dependents) {
-            if (instrs.find(instr) != instrs.end() && instrs[instr] >= clockCycle) {
+        for (auto curr: instr.dependents) {
+            if (instrs.find(curr) != instrs.end() && instrs[curr] >= clockCycle) {
                 // reschedule event if dependency not satisified
-                q.push(Event(EX, curr));
+                q.push(Event(EX, instr, e.pipeline));
                 return;
             }
         }
     }
 
-    q.push(Event(MEM, curr));
+    q.push(Event(MEM, instr, e.pipeline));
 
-    p.sCount[EX]--;
-    p.sCount[MEM]++;
+    p.pipelines[e.pipeline][EX] = false;    
+    p.pipelines[e.pipeline][MEM] = true;
 }
 
-void EventList::processMEM(unsigned clockCycle, unordered_map<string, unsigned> &instrs, Processor &p, int width) {
-    Instruction curr = q.front().instr;
+void EventList::processMEM(unsigned clockCycle, unordered_map<string, unsigned> &instrs, Processor &p) {
+    Event e = q.front();
+    Instruction instr = q.front().instr;
 
-    if (p.sCount[WB] == width) {
-        // reschedule current instruction if WB stage is full
-        q.push(Event(MEM, curr));
+    if (p.pipelines[e.pipeline][WB]) {
+        // reschedule current instruction if MEM stage is full
+        q.push(Event(EX, instr, e.pipeline));
         return;
     }
 
-    if (curr.type == Load || curr.type == Store) {
+    if (instr.type == Load || instr.type == Store) {
         // update status of execution units
-        if (curr.type == Load) { p.LoadBusy = ""; }
-        else if (curr.type == Store) { p.StoreBusy = ""; }
+        if (instr.type == Load) { p.LoadBusy = ""; }
+        else if (instr.type == Store) { p.StoreBusy = ""; }
 
-        instrs[curr.PC] = clockCycle;
+        instrs[instr.PC] = clockCycle;
     }
 
-    q.push(Event(WB, curr));
+    q.push(Event(WB, instr, e.pipeline));
 
-    p.sCount[MEM]--;
-    p.sCount[WB]++;
+    p.pipelines[e.pipeline][MEM] = false;
+    p.pipelines[e.pipeline][WB] = true;
 }
 
 void EventList::processWB(Processor &p) {
+    Event e = q.front();
     Instruction instr = q.front().instr;
     p.remove(instr);
 
-    p.sCount[WB]--;
+    p.pipelines[e.pipeline][WB] = false;
 }
