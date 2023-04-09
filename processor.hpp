@@ -4,13 +4,22 @@
 
 #pragma once
 
+// Stages of the processor.
+typedef enum {
+    IF = 0,
+    ID = 1,
+    EX = 2,
+    MEM = 3,
+    WB = 4
+} Stage;
+
 // Queue of instructions that are going through the processor pipeline. 
 class Processor {
     private:
         deque<Instruction> q; // Queue of instructions in the processor.
 
     public:
-        unsigned sCount[5]; // Keeps track of number of instructions in each stage.
+        vector<vector<bool>> pipelines; // 2D matrix that keeps track of busy stages in each pipeline.
 
         // Used to check for structural hazards.
         string IntegerBusy; // PC of instruction using the integer ALU unit.
@@ -29,8 +38,9 @@ class Processor {
         //        branch instruction isn't being executed.
         // PARAM: instr - The instruction that will be added.
         //        width - The maximum number of instructions that can be in the IF stage.
-        //  POST: Returns if the instruction was added successfully.
-        bool insertIF(Instruction instr, int width);
+        //  POST: Returns which pipeline the inserted instruction is in; returns -1 if insertion
+        //        failed.
+        int insertIF(Instruction instr, int width);
         //  DESC: Removes the provided instruction from the processor queue.
         //   PRE: Instruction must be in the processor.
         // PARAM: instr - The instruction that will be removed.

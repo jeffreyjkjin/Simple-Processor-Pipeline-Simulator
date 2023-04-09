@@ -1,12 +1,15 @@
 #include "processor.hpp"
 
-#include <iostream>
-
 Processor::Processor(IQueue &iQ, int width) {
     // initalize attributes
-    q = deque<Instruction>();
-    
-    for (unsigned i = 0; i < 5; i++) { sCount[i] = 0; }
+    for (unsigned i = 0; i < width; i++) {
+        // set up 2D array for keeping track of pipelines and stages
+        vector<bool> temp;
+        for (unsigned j = 0; j < 5; j++) {
+            temp.push_back(false);
+        }
+        pipelines.push_back(temp);
+    }
 
     IntegerBusy = "";
     FloatBusy = "";  
@@ -15,32 +18,38 @@ Processor::Processor(IQueue &iQ, int width) {
 
     BranchBusy = ""; 
 
-    // add first width number of instructions
+    // add first width-th number of instructions
     for (unsigned i = 0; i < width; i++) { 
         if (!iQ.isEmpty()) { 
-            Instruction curr = iQ.front();
-            q.push_back(curr); 
+            Instruction instr = iQ.front();
+            q.push_back(instr); 
             iQ.pop();
 
-            if (curr.type == Branch) {
+            pipelines[i][IF] = true;
+
+            if (instr.type == Branch) {
                 // stop fetching instructions if latest instruction is a branch
-                BranchBusy = curr.PC;
+                BranchBusy = instr.PC;
                 return;
             }
         }
     }
-
 }
 
-bool Processor::insertIF(Instruction instr, int width) {
-    // do not insert if IF stage full or branch is in stage IF, ID or EX
-    if (sCount[0] == width || BranchBusy != "") { return false; }
-    q.push_back(instr);
-    sCount[0]++;
+int Processor::insertIF(Instruction instr, int width) {
+    for (unsigned i = 0; i < width; i++) {
+        // do not insert if IF stage full or branch is in stage IF, ID or EX
+        if (!pipelines[i][IF] && BranchBusy == "") {
+            q.push_back(instr);
+            pipelines[i][IF] = true;
+            
+            if (instr.type == Branch) { BranchBusy = instr.PC; }
+            
+            return i;
+        }
+    }
 
-    if (instr.type == Branch) { BranchBusy = instr.PC; }
-
-    return true;
+    return -1;
 }
 
 void Processor::remove(Instruction instr) {
