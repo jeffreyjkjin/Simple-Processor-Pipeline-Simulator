@@ -4,12 +4,7 @@ Processor::Processor(IQueue &iQ, int width) {
     // initalize attributes
     for (unsigned i = 0; i < 5; i++) { stageCount[i] = 0; }
 
-    IntegerBusy = "";
-    FloatBusy = "";  
-    LoadBusy = "";
-    StoreBusy = "";
-
-    BranchBusy = ""; 
+    for (unsigned i = 0; i < 5; i++) { iBusy[i] = false; }
 
     // add first width-th number of instructions
     for (unsigned i = 0; i < width; i++) { 
@@ -22,7 +17,7 @@ Processor::Processor(IQueue &iQ, int width) {
 
             if (instr.type == Branch) {
                 // stop fetching instructions if latest instruction is a branch
-                BranchBusy = instr.PC;
+                iBusy[Branch - 1] = true;
                 return;
             }
         }
@@ -30,16 +25,14 @@ Processor::Processor(IQueue &iQ, int width) {
 }
 
 bool Processor::insertIF(Instruction instr, int width) {
-    for (unsigned i = 0; i < width; i++) {
-        // do not insert if IF stage full or branch is in stage IF, ID or EX
-        if (stageCount[IF] < width && BranchBusy == "") {
-            q.push_back(instr);
-            stageCount[IF]++;
-            
-            if (instr.type == Branch) { BranchBusy = instr.PC; }
-            
-            return true;
-        }
+    // do not insert if IF stage full or branch is in stage IF, ID or EX
+    if (stageCount[IF] < width && !iBusy[Branch - 1]) {
+        q.push_back(instr);
+        stageCount[IF]++;
+        
+        if (instr.type == Branch) { iBusy[Branch - 1] = true; }
+        
+        return true;
     }
 
     return false;

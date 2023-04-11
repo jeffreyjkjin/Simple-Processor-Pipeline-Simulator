@@ -20,15 +20,7 @@ class Processor {
 
     public:
         unsigned stageCount[5]; // Keeps track of how many instructions are in each stage.
-
-        // Used to check for structural hazards.
-        string IntegerBusy; // PC of instruction using the integer ALU unit.
-        string FloatBusy;   // PC of instruction using the floating point unit.
-        string LoadBusy;    // PC of instruction using the read port.
-        string StoreBusy;   // PC of instruction using the write port.
-
-        // Used to check for control hazard 
-        string BranchBusy;  // PC of instruction using the branch execution unit. 
+        bool iBusy[5];          // Keeps track of structural/control hazards for each instruction.
         
         //  DESC: Creates a new processor and queues up the first width number of instructions.
         // PARAM: iQ - A queue with instructions that will be sent to the processor queue.

@@ -53,15 +53,14 @@ void EventList::processID(unsigned clockCycle, unordered_map<string, unsigned> &
 
     if (instr.type == Integer || instr.type == Float) {
         // checks if corresponding execution unit is available or not
-        if ((instr.type == Integer && p.IntegerBusy != "") || (instr.type == Float && p.FloatBusy != "")) {
+        if (p.iBusy[instr.type - 1]) {
             // reschedule event if execution unit not available
             q.push(Event(ID, instr));
             return;
         }
 
         // occupy corresponding execution unit
-        if (instr.type == Integer) { p.IntegerBusy = instr.PC; }
-        else { p.FloatBusy = instr.PC; }
+        p.iBusy[instr.type - 1] = true;
     }
 
     q.push(Event(EX, instr));
@@ -81,23 +80,20 @@ void EventList::processEX(unsigned clockCycle, unordered_map<string, unsigned> &
 
     if (instr.type == Integer || instr.type == Float || instr.type == Branch) {
         // update status of execution units
-        if (instr.type == Integer) { p.IntegerBusy = ""; }
-        else if (instr.type == Float) { p.FloatBusy = ""; }
-        else { p.BranchBusy = ""; }
+        p.iBusy[instr.type - 1] = false;
         
         instrs[instr.PC] = clockCycle;
     }
     else {
         // check if read/write ports are available or not
-        if ((instr.type == Load && p.LoadBusy != "") || (instr.type == Store && p.StoreBusy != "")) {
+        if (p.iBusy[instr.type - 1]) {
             // reschedule event if read/write ports not available
             q.push(Event(EX, instr));
             return;            
         }
 
         // occupy corresponding read/write ports
-        if (instr.type == Load) { p.LoadBusy = instr.PC; }
-        else { p.StoreBusy = instr.PC; }
+        p.iBusy[instr.type-1] = true;
     }
 
     q.push(Event(MEM, instr));
@@ -117,8 +113,7 @@ void EventList::processMEM(unsigned clockCycle, unordered_map<string, unsigned> 
 
     if (instr.type == Load || instr.type == Store) {
         // update status of read/write ports
-        if (instr.type == Load) { p.LoadBusy = ""; }
-        else { p.StoreBusy = ""; }
+        p.iBusy[instr.type - 1] = false;
 
         instrs[instr.PC] = clockCycle;
     }
