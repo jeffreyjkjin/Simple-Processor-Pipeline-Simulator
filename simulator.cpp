@@ -55,22 +55,23 @@ void Simulator::start() {
     while (p.size() || !iQ.isEmpty()) {
     
         int numInstrs = p.size();
+
         for (int i = 0; i < numInstrs; i++) {
             // processes every instruction in the processor
             Event curr = eList.front();
 
             switch (curr.stage) {
                 case IF:
-                    eList.processIF(instrs, p);
+                    eList.processIF(instrs, p, width);
                     break;
                 case ID:
-                    eList.processID(clockCycle, instrs, p);
+                    eList.processID(clockCycle, instrs, p, width);
                     break;
                 case EX:
-                    eList.processEX(clockCycle, instrs, p);
+                    eList.processEX(clockCycle, instrs, p, width);
                     break;
                 case MEM:
-                    eList.processMEM(clockCycle, instrs, p);
+                    eList.processMEM(clockCycle, instrs, p, width);
                     break;
                 case WB:
                     eList.processWB(p);
@@ -86,11 +87,10 @@ void Simulator::start() {
         for (unsigned i = 0; i < width; i++) {
             if (!iQ.isEmpty()) {
                 Instruction instr = iQ.front();
-                int pipeline = p.insertIF(instr, width);
-                
-                if (pipeline >= 0) { 
+
+                if (p.insertIF(instr, width)) { 
                     // only send instruction if there is room in the IF stage
-                    eList.insertIF(instr, pipeline);
+                    eList.insertIF(instr);
                     iQ.pop(); 
                 }
             }
