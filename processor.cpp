@@ -2,14 +2,7 @@
 
 Processor::Processor(IQueue &iQ, int width) {
     // initalize attributes
-    for (unsigned i = 0; i < width; i++) {
-        // set up 2D array for keeping track of pipelines and stages
-        vector<bool> temp;
-        for (unsigned j = 0; j < 5; j++) {
-            temp.push_back(false);
-        }
-        pipelines.push_back(temp);
-    }
+    for (unsigned i = 0; i < 5; i++) { stageCount[i] = 0; }
 
     IntegerBusy = "";
     FloatBusy = "";  
@@ -25,7 +18,7 @@ Processor::Processor(IQueue &iQ, int width) {
             q.push_back(instr); 
             iQ.pop();
 
-            pipelines[i][IF] = true;
+            stageCount[IF]++;
 
             if (instr.type == Branch) {
                 // stop fetching instructions if latest instruction is a branch
@@ -36,20 +29,20 @@ Processor::Processor(IQueue &iQ, int width) {
     }
 }
 
-int Processor::insertIF(Instruction instr, int width) {
+bool Processor::insertIF(Instruction instr, int width) {
     for (unsigned i = 0; i < width; i++) {
         // do not insert if IF stage full or branch is in stage IF, ID or EX
-        if (!pipelines[i][IF] && BranchBusy == "") {
+        if (stageCount[IF] < width && BranchBusy == "") {
             q.push_back(instr);
-            pipelines[i][IF] = true;
+            stageCount[IF]++;
             
             if (instr.type == Branch) { BranchBusy = instr.PC; }
             
-            return i;
+            return true;
         }
     }
 
-    return -1;
+    return false;
 }
 
 void Processor::remove(Instruction instr) {
