@@ -4,7 +4,7 @@ EventList::EventList(Processor &p) {
     // schedule IFs for the first width-th number of instructions
     unsigned i = 0;
     for (auto instr: p) { 
-        q.push(Event(IF, instr, i));
+        q.push(Event(IF, instr));
 
         i++;
     }
@@ -14,42 +14,40 @@ void EventList::pop() { q.pop(); }
 
 Event EventList::front() const { return q.front(); }
 
-void EventList::insertIF(Instruction &instr, unsigned pipeline) { q.push(Event(IF, instr, pipeline)); }
+void EventList::insertIF(Instruction &instr) { q.push(Event(IF, instr)); }
 
-void EventList::processIF(unordered_map<string, unsigned> &instrs, Processor &p) {
-    Event e = q.front();
-    Instruction instr = e.instr;
+void EventList::processIF(unordered_map<string, unsigned> &instrs, Processor &p, int width) {
+    Instruction instr = q.front().instr;
     
-    if (p.pipelines[e.pipeline][ID]) {
-        q.push(Event(IF, instr, e.pipeline));
+    if (p.stageCount[ID] == width) {
+        q.push(Event(IF, instr));
         return;
     }
     
     // schedule ID event for current instruction
-    q.push(Event(ID, instr, e.pipeline));
+    q.push(Event(ID, instr));
 
     if (instrs.find(instr.PC) == instrs.end()) { instrs[instr.PC] = 0; }
 
-    p.pipelines[e.pipeline][IF] = false;
-    p.pipelines[e.pipeline][ID] = true;
+    p.stageCount[IF]--;
+    p.stageCount[ID]++;
 }
 
-void EventList::processID(unsigned clockCycle, unordered_map<string, unsigned> &instrs, Processor &p) {
-    Event e = q.front();
-    Instruction instr = e.instr;
+void EventList::processID(unsigned clockCycle, unordered_map<string, unsigned> &instrs, Processor &p, int width) {
+    Instruction instr = q.front().instr;
 
     // check if dependencies are satisfied
     for (auto curr: instr.dependents) {
         if (instrs.find(curr) != instrs.end() && instrs[curr] == 0) {
             // reschedule event if dependency not satisified
-            q.push(Event(ID, instr, e.pipeline));
+            q.push(Event(ID, instr));
             return;
         }
     }
 
-    if (p.pipelines[e.pipeline][EX]) {
+    if (p.stageCount[EX] == width) {
         // reschedule current instruction if EX stage is full
-        q.push(Event(ID, instr, e.pipeline));
+        q.push(Event(ID, instr));
         return;
     }
 
@@ -57,7 +55,7 @@ void EventList::processID(unsigned clockCycle, unordered_map<string, unsigned> &
         // checks if corresponding execution unit is available or not
         if ((instr.type == Integer && p.IntegerBusy != "") || (instr.type == Float && p.FloatBusy != "")) {
             // reschedule event if execution unit not available
-            q.push(Event(ID, instr, e.pipeline));
+            q.push(Event(ID, instr));
             return;
         }
 
@@ -66,19 +64,18 @@ void EventList::processID(unsigned clockCycle, unordered_map<string, unsigned> &
         else { p.FloatBusy = instr.PC; }
     }
 
-    q.push(Event(EX, instr, e.pipeline));
+    q.push(Event(EX, instr));
 
-    p.pipelines[e.pipeline][ID] = false;
-    p.pipelines[e.pipeline][EX] = true;
+    p.stageCount[ID]--;
+    p.stageCount[EX]++;
 }
 
-void EventList::processEX(unsigned clockCycle, unordered_map<string, unsigned> &instrs, Processor &p) {
-    Event e = q.front();
+void EventList::processEX(unsigned clockCycle, unordered_map<string, unsigned> &instrs, Processor &p, int width) {
     Instruction instr = q.front().instr;
 
-    if (p.pipelines[e.pipeline][MEM]) {
+    if (p.stageCount[MEM] == width) {
         // reschedule current instruction if MEM stage is full
-        q.push(Event(EX, instr, e.pipeline));
+        q.push(Event(EX, instr));
         return;
     }
 
@@ -94,7 +91,7 @@ void EventList::processEX(unsigned clockCycle, unordered_map<string, unsigned> &
         // check if read/write ports are available or not
         if ((instr.type == Load && p.LoadBusy != "") || (instr.type == Store && p.StoreBusy != "")) {
             // reschedule event if read/write ports not available
-            q.push(Event(EX, instr, e.pipeline));
+            q.push(Event(EX, instr));
             return;            
         }
 
@@ -103,19 +100,18 @@ void EventList::processEX(unsigned clockCycle, unordered_map<string, unsigned> &
         else { p.StoreBusy = instr.PC; }
     }
 
-    q.push(Event(MEM, instr, e.pipeline));
+    q.push(Event(MEM, instr));
 
-    p.pipelines[e.pipeline][EX] = false;    
-    p.pipelines[e.pipeline][MEM] = true;
+    p.stageCount[EX]--;    
+    p.stageCount[MEM]++;
 }
 
-void EventList::processMEM(unsigned clockCycle, unordered_map<string, unsigned> &instrs, Processor &p) {
-    Event e = q.front();
+void EventList::processMEM(unsigned clockCycle, unordered_map<string, unsigned> &instrs, Processor &p, int width) {
     Instruction instr = q.front().instr;
 
-    if (p.pipelines[e.pipeline][WB]) {
+    if (p.stageCount[WB] == width) {
         // reschedule current instruction if MEM stage is full
-        q.push(Event(EX, instr, e.pipeline));
+        q.push(Event(EX, instr));
         return;
     }
 
@@ -127,16 +123,15 @@ void EventList::processMEM(unsigned clockCycle, unordered_map<string, unsigned> 
         instrs[instr.PC] = clockCycle;
     }
 
-    q.push(Event(WB, instr, e.pipeline));
+    q.push(Event(WB, instr));
 
-    p.pipelines[e.pipeline][MEM] = false;
-    p.pipelines[e.pipeline][WB] = true;
+    p.stageCount[MEM]--;
+    p.stageCount[WB]++;
 }
 
 void EventList::processWB(Processor &p) {
-    Event e = q.front();
     Instruction instr = q.front().instr;
     p.remove(instr);
 
-    p.pipelines[e.pipeline][WB] = false;
+    p.stageCount[WB]--;
 }

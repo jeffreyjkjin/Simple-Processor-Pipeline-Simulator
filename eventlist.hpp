@@ -15,12 +15,11 @@ class Event {
     public:
         Stage stage;       // The current stage that the associated instruction is in.
         Instruction instr; // The instruction associated with this event. 
-        unsigned pipeline; // The pipeline that the associated instruction is passing through.
 
         //  DESC: Creates a new event with the provided parameter.
         // PARAM: stage - The stage that the instruction is currently in.
         //        instr - The instruction associated with this event.
-        Event(Stage stage, Instruction &instr, unsigned pipeline) : stage(stage), instr(instr), pipeline(pipeline) {};
+        Event(Stage stage, Instruction &instr) : stage(stage), instr(instr) {};
 };
 
 // Queue of events that occur in the simulation.
@@ -44,25 +43,27 @@ class EventList {
         //        the IF stage.
         //   PRE: Assume there is room for the new instruction to enter the IF stage.
         // PARAM: instr - The instruction that will be added to the queue.
-        void insertIF(Instruction &instr, unsigned pipeline);
+        void insertIF(Instruction &instr);
         //  DESC: The current instruction is processed in the IF stage.
         // PARAM: instrs - Hashtable containing previous instructions that are in progress or have
         //                 been completed.
         //        p - Processor queue that contains the current instructions.
+        //        width - Maximum number of instructions that can be in each stage.
         //  POST: The current instruction moves to the ID stage; remains in the current stage if 
         //        the next stage is full.
-        void processIF(unordered_map<string, unsigned> &instrs, Processor &p);
+        void processIF(unordered_map<string, unsigned> &instrs, Processor &p, int width);
         //  DESC: The current instruction is processed in the IF stage. Integer and float
         //        instructions utilize their corresponding execution units.
         // PARAM: clockCycle - The current clock cycle the processor is in.
         //        instrs - Hashtable containing previous instructions that are in progress or have
         //                 been completed.
         //        p - Processor queue that contains the current instructions.
+        //        width - Maximum number of instructions that can be in each stage.
         //  POST: The current instruction moves to the EX stage; remains in the current stage if 
         //        the next stage is full. Integer and float instructions only move onto the EX 
         //        stage if their corresponding execution units are available and dependencies are
         //        satified.
-        void processID(unsigned clockCycle, unordered_map<string, unsigned> &instrs, Processor &p);
+        void processID(unsigned clockCycle, unordered_map<string, unsigned> &instrs, Processor &p, int width);
         //  DESC: The current instruction is processed in the ID stage. Integer, float and branches
         //        finish using their corresponding execution units. Load and store instructions
         //        occupy their read/write ports.
@@ -70,24 +71,26 @@ class EventList {
         //        instrs - Hashtable containing previous instructions that are in progress or have
         //                 been completed.
         //        p - Processor queue that contains the current instructions.
+        //        width - Maximum number of instructions that can be in each stage.
         //  POST: The current instruction moves to the MEM stage; remains in the current stage if 
         //        the next stage is full. Integer, float and branch execution units are available
         //        after the corresponding instruction finishes this stage and their PC addresses 
         //        are stored in instrs so they can be used as dependencies for other instructions.
         //        Load and store instructions only move onto the MEM stage if their read/write 
         //        ports are available and dependencies are satisifed.
-        void processEX(unsigned clockCycle, unordered_map<string, unsigned> &instrs, Processor &p);
+        void processEX(unsigned clockCycle, unordered_map<string, unsigned> &instrs, Processor &p, int width);
         //  DESC: The current instruction is processed in the MEM stage. Load and store
         //        instructions finish using their read/write ports. 
         // PARAM: clockCycle - The current clock cycle the processor is in.
         //        instrs - Hashtable containing previous instructions that are in progress or have
         //                 been completed.
         //        p - Processor queue that contains the current instructions.
+        //        width - Maximum number of instructions that can be in each stage.
         //  POST: The current instruction moves to the WB stage; remains in the current stage if 
         //        the next stage is full. Load and store read/write ports are available ater the
         //        corresponding instruction finishes this stage and their PC addresses are stored
         //        in instrs so they can be used as dependencies for other instructions.
-        void processMEM(unsigned clockCycle, unordered_map<string, unsigned> &instrs, Processor &p);
+        void processMEM(unsigned clockCycle, unordered_map<string, unsigned> &instrs, Processor &p, int width);
         //  DESC: The current instruction is processed in the WB stage.
         // PARAM: p - Processor queue that contains the current instructions.
         //  POST: The current instruction is removed from the processor.
