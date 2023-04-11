@@ -28,7 +28,7 @@ void EventList::processIF(unordered_map<string, unsigned> &instrs, Processor &p)
     // schedule ID event for current instruction
     q.push(Event(ID, instr, e.pipeline));
 
-    instrs[instr.PC] = 0;
+    if (instrs.find(instr.PC) == instrs.end()) { instrs[instr.PC] = 0; }
 
     p.pipelines[e.pipeline][IF] = false;
     p.pipelines[e.pipeline][ID] = true;
@@ -38,6 +38,15 @@ void EventList::processID(unsigned clockCycle, unordered_map<string, unsigned> &
     Event e = q.front();
     Instruction instr = e.instr;
 
+    // check if dependencies are satisfied
+    for (auto curr: instr.dependents) {
+        if (instrs.find(curr) != instrs.end() && instrs[curr] == 0) {
+            // reschedule event if dependency not satisified
+            q.push(Event(ID, instr, e.pipeline));
+            return;
+        }
+    }
+
     if (p.pipelines[e.pipeline][EX]) {
         // reschedule current instruction if EX stage is full
         q.push(Event(ID, instr, e.pipeline));
@@ -45,15 +54,6 @@ void EventList::processID(unsigned clockCycle, unordered_map<string, unsigned> &
     }
 
     if (instr.type == Integer || instr.type == Float) {
-        // check if dependencies are satisfied
-        for (auto curr: instr.dependents) {
-            if (instrs.find(curr) != instrs.end() && instrs[curr] >= clockCycle) {
-                // reschedule event if dependency not satisified
-                q.push(Event(ID, instr, e.pipeline));
-                return;
-            }
-        }
-
         // checks if corresponding execution unit is available or not
         if ((instr.type == Integer && p.IntegerBusy != "") || (instr.type == Float && p.FloatBusy != "")) {
             // reschedule event if execution unit not available
@@ -91,15 +91,6 @@ void EventList::processEX(unsigned clockCycle, unordered_map<string, unsigned> &
         instrs[instr.PC] = clockCycle;
     }
     else {
-        // check if dependencies are satisfied
-        for (auto curr: instr.dependents) {
-            if (instrs.find(curr) != instrs.end() && instrs[curr] >= clockCycle) {
-                // reschedule event if dependency not satisified
-                q.push(Event(EX, instr, e.pipeline));
-                return;
-            }
-        }
-
         // check if read/write ports are available or not
         if ((instr.type == Load && p.LoadBusy != "") || (instr.type == Store && p.StoreBusy != "")) {
             // reschedule event if read/write ports not available
