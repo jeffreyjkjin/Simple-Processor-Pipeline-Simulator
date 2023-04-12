@@ -51,11 +51,10 @@ class EventList {
         //        width - Maximum number of instructions that can be in each stage.
         //  POST: The current instruction moves to the ID stage; remains in the current stage if 
         //        the next stage is full.
-        void processIF(unordered_map<string, unsigned> &instrs, Processor &p, int width);
+        void processIF(unordered_map<string, vector<tuple<unsigned, bool>>> &instrs, Processor &p, int width);
         //  DESC: The current instruction is processed in the IF stage. Integer and float
         //        instructions utilize their corresponding execution units.
-        // PARAM: clockCycle - The current clock cycle the processor is in.
-        //        instrs - Hashtable containing previous instructions that are in progress or have
+        // PARAM: instrs - Hashtable containing previous instructions that are in progress or have
         //                 been completed.
         //        p - Processor queue that contains the current instructions.
         //        width - Maximum number of instructions that can be in each stage.
@@ -63,12 +62,11 @@ class EventList {
         //        the next stage is full. Integer and float instructions only move onto the EX 
         //        stage if their corresponding execution units are available and dependencies are
         //        satified.
-        void processID(unsigned clockCycle, unordered_map<string, unsigned> &instrs, Processor &p, int width);
+        void processID(unordered_map<string, vector<tuple<unsigned, bool>>> &instrs, Processor &p, int width);
         //  DESC: The current instruction is processed in the ID stage. Integer, float and branches
         //        finish using their corresponding execution units. Load and store instructions
         //        occupy their read/write ports.
-        // PARAM: clockCycle - The current clock cycle the processor is in.
-        //        instrs - Hashtable containing previous instructions that are in progress or have
+        // PARAM: instrs - Hashtable containing previous instructions that are in progress or have
         //                 been completed.
         //        p - Processor queue that contains the current instructions.
         //        width - Maximum number of instructions that can be in each stage.
@@ -78,11 +76,10 @@ class EventList {
         //        are stored in instrs so they can be used as dependencies for other instructions.
         //        Load and store instructions only move onto the MEM stage if their read/write 
         //        ports are available and dependencies are satisifed.
-        void processEX(unsigned clockCycle, unordered_map<string, unsigned> &instrs, Processor &p, int width);
+        void processEX(unordered_map<string, vector<tuple<unsigned, bool>>> &instrs, Processor &p, int width);
         //  DESC: The current instruction is processed in the MEM stage. Load and store
         //        instructions finish using their read/write ports. 
-        // PARAM: clockCycle - The current clock cycle the processor is in.
-        //        instrs - Hashtable containing previous instructions that are in progress or have
+        // PARAM: instrs - Hashtable containing previous instructions that are in progress or have
         //                 been completed.
         //        p - Processor queue that contains the current instructions.
         //        width - Maximum number of instructions that can be in each stage.
@@ -90,7 +87,7 @@ class EventList {
         //        the next stage is full. Load and store read/write ports are available ater the
         //        corresponding instruction finishes this stage and their PC addresses are stored
         //        in instrs so they can be used as dependencies for other instructions.
-        void processMEM(unsigned clockCycle, unordered_map<string, unsigned> &instrs, Processor &p, int width);
+        void processMEM(unordered_map<string, vector<tuple<unsigned, bool>>> &instrs, Processor &p, int width);
         //  DESC: The current instruction is processed in the WB stage.
         // PARAM: p - Processor queue that contains the current instructions.
         //  POST: The current instruction is removed from the processor.

@@ -16,7 +16,7 @@ Event EventList::front() const { return q.front(); }
 
 void EventList::insertIF(Instruction &instr) { q.push(Event(IF, instr)); }
 
-void EventList::processIF(unordered_map<string, unsigned> &instrs, Processor &p, int width) {
+void EventList::processIF(unordered_map<string, vector<tuple<unsigned, bool>>> &instrs, Processor &p, int width) {
     Instruction instr = q.front().instr;
     
     if (p.stageCount[ID] == width) {
@@ -27,21 +27,26 @@ void EventList::processIF(unordered_map<string, unsigned> &instrs, Processor &p,
     // schedule ID event for current instruction
     q.push(Event(ID, instr));
 
-    if (instrs.find(instr.PC) == instrs.end()) { instrs[instr.PC] = 0; }
+    instrs[instr.PC].push_back(make_tuple(instr.number, false));
 
     p.stageCount[IF]--;
     p.stageCount[ID]++;
 }
 
-void EventList::processID(unsigned clockCycle, unordered_map<string, unsigned> &instrs, Processor &p, int width) {
+void EventList::processID(unordered_map<string, vector<tuple<unsigned, bool>>> &instrs, Processor &p, int width) {
     Instruction instr = q.front().instr;
 
     // check if dependencies are satisfied
     for (auto curr: instr.dependents) {
-        if (instrs.find(curr) != instrs.end() && instrs[curr] == 0) {
-            // reschedule event if dependency not satisified
-            q.push(Event(ID, instr));
-            return;
+
+        if (instrs.find(curr) != instrs.end()) {
+            for (auto search: instrs[curr]) {
+                if (get<0>(search) < instr.number && !get<1>(search)) {
+                    // reschedule event if dependency not satisified
+                    q.push(Event(ID, instr));
+                    return;
+                }
+            }
         }
     }
 
@@ -69,7 +74,7 @@ void EventList::processID(unsigned clockCycle, unordered_map<string, unsigned> &
     p.stageCount[EX]++;
 }
 
-void EventList::processEX(unsigned clockCycle, unordered_map<string, unsigned> &instrs, Processor &p, int width) {
+void EventList::processEX(unordered_map<string, vector<tuple<unsigned, bool>>> &instrs, Processor &p, int width) {
     Instruction instr = q.front().instr;
 
     if (p.stageCount[MEM] == width) {
@@ -82,7 +87,12 @@ void EventList::processEX(unsigned clockCycle, unordered_map<string, unsigned> &
         // update status of execution units
         p.iBusy[instr.type - 1] = false;
         
-        instrs[instr.PC] = clockCycle;
+        for (auto &search: instrs[instr.PC]) {
+            if (get<0>(search) == instr.number) { 
+                get<1>(search) = true; 
+                break;
+            }
+        }
     }
     else {
         // check if read/write ports are available or not
@@ -102,7 +112,7 @@ void EventList::processEX(unsigned clockCycle, unordered_map<string, unsigned> &
     p.stageCount[MEM]++;
 }
 
-void EventList::processMEM(unsigned clockCycle, unordered_map<string, unsigned> &instrs, Processor &p, int width) {
+void EventList::processMEM(unordered_map<string, vector<tuple<unsigned, bool>>> &instrs, Processor &p, int width) {
     Instruction instr = q.front().instr;
 
     if (p.stageCount[WB] == width) {
@@ -115,7 +125,12 @@ void EventList::processMEM(unsigned clockCycle, unordered_map<string, unsigned> 
         // update status of read/write ports
         p.iBusy[instr.type - 1] = false;
 
-        instrs[instr.PC] = clockCycle;
+        for (auto &search: instrs[instr.PC]) {
+            if (get<0>(search) == instr.number) { 
+                get<1>(search) = true; 
+                break;
+            }
+        }
     }
 
     q.push(Event(WB, instr));
