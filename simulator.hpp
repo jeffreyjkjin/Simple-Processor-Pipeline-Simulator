@@ -1,8 +1,10 @@
+#include <chrono>
 #include <fstream>
 
 #pragma once
 
 using namespace std;
+using namespace std::chrono;
 
 class Simulator {
     private:
@@ -11,9 +13,10 @@ class Simulator {
         int instrCount;  // Number of instructions that will be read from the file.
         int width;       // Number of pipelines in the processor.
 
-        unsigned totalInstructions; // The total number of instructions executed.
-        unsigned clockCycle;        // The current clock cycle of the processor.
-        unsigned iCount[5];         // Counts the number of instructions of each type.
+        unsigned totalInstructions;      // The total number of instructions executed.
+        unsigned clockCycle;             // The current clock cycle of the processor.
+        unsigned iCount[5];              // Counts the number of instructions of each type.
+        duration<double, milli> runTime; // The total run time of the simulation.
 
         // DESC: Outputs the current clock cycle, current number of executed instructions and
         //       histogram of instructions types.

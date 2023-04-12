@@ -18,8 +18,8 @@ void Simulator::printStatistics() const {
         else { histogram[i] = 0; }
     }
 
+    cout << "Simulation Run Time (Seconds): " << runTime.count() / 1000 << endl;
     cout << "Execution Time (Cycles): " << clockCycle << endl;
-    cout << "Histogram of Instructions" << endl;
     cout << "Integer: " << histogram[0] << "%" << endl;
     cout << "Float: " << histogram[1] << "%" << endl;
     cout << "Branch: " << histogram[2] << "%" << endl;
@@ -43,20 +43,22 @@ Simulator::Simulator(string fileName, int startLine, int instrCount, int width) 
 }
 
 void Simulator::start() {
+    auto start = high_resolution_clock::now();
+
     IQueue iQ = IQueue(fileName, startLine, instrCount);
     
     Processor p = Processor(iQ, width);
 
     EventList eList = EventList(p);
 
-    unordered_map<string, unsigned> instrs;
+    unordered_map<string, vector<tuple<unsigned, bool>>> instrs;
 
     // event loop keeps running while there still instructions in processor or instruction queue
     while (p.size() || !iQ.isEmpty()) {
     
-        int numInstrs = p.size();
+        unsigned numInstrs = p.size();
 
-        for (int i = 0; i < numInstrs; i++) {
+        for (unsigned i = 0; i < numInstrs; i++) {
             // processes every instruction in the processor
             Event curr = eList.front();
 
@@ -65,13 +67,13 @@ void Simulator::start() {
                     eList.processIF(instrs, p, width);
                     break;
                 case ID:
-                    eList.processID(clockCycle, instrs, p, width);
+                    eList.processID(instrs, p, width);
                     break;
                 case EX:
-                    eList.processEX(clockCycle, instrs, p, width);
+                    eList.processEX(instrs, p, width);
                     break;
                 case MEM:
-                    eList.processMEM(clockCycle, instrs, p, width);
+                    eList.processMEM(instrs, p, width);
                     break;
                 case WB:
                     eList.processWB(p);
@@ -98,6 +100,9 @@ void Simulator::start() {
 
         clockCycle++;
     }
+
+    auto end = high_resolution_clock::now();
+    runTime = end - start;
 
     printStatistics();
 }
