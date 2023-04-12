@@ -3,11 +3,7 @@
 #include <sstream>
 #include <vector>
 
-using namespace std;
-
 IQueue::IQueue(string fileName, int startLine, int instrCount) {
-    q = queue<Instruction>();
-
     ifstream file;
     file.open(fileName);
 
@@ -36,10 +32,11 @@ IQueue::IQueue(string fileName, int startLine, int instrCount) {
         // parse tokens
         string PC = tokens[0];
         iType type = (iType) stoi(tokens[1]);
+
         // erase PC and type from tokens so only dependents if any are left in the vector
         tokens.erase(tokens.begin(), tokens.begin() + 2);
 
-        Instruction instr = Instruction(PC, type, tokens);
+        Instruction instr = Instruction(PC, type, tokens, lineCount);
         q.push(instr);
 
         lineCount++;
