@@ -4,10 +4,10 @@ Processor::Processor(IQueue &iQ, int width) {
     // initalize attributes
     for (unsigned i = 0; i < 5; i++) { stageCount[i] = 0; }
 
-    for (unsigned i = 0; i < 5; i++) { iBusy[i] = false; }
-
     // should be the first instruction in iQ since it should be the first one to reach each stage
     for (unsigned i = 0; i < 5; i++) { nextInstr[i] = iQ.front().number; }
+
+    for (unsigned i = 0; i < 5; i++) { iBusy[i] = ""; }
 
     // add first width-th number of instructions
     for (unsigned i = 0; i < width; i++) { 
@@ -29,11 +29,11 @@ Processor::Processor(IQueue &iQ, int width) {
 
 bool Processor::insertIF(Instruction instr, int width) {
     // do not insert if IF stage full or branch is in stage IF, ID or EX
-    if (stageCount[IF] < width && !iBusy[Branch - 1]) {
+    if (stageCount[IF] < width && iBusy[Branch - 1] == "") {
         q.push_back(instr);
         stageCount[IF]++;
         
-        if (instr.type == Branch) { iBusy[Branch - 1] = true; }
+        if (instr.type == Branch) { iBusy[Branch - 1] = instr.PC; }
         
         return true;
     }
