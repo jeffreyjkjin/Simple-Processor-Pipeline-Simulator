@@ -9,7 +9,7 @@
 #include "iqueue.hpp"
 #include "processor.hpp"
 
-void Simulator::printStatistics() const {
+void Simulator::print() const {
     // compute percentages for histogram
     double histogram[5];
     for (unsigned i = 0; i < 5; i++) {
@@ -18,13 +18,37 @@ void Simulator::printStatistics() const {
         else { histogram[i] = 0; }
     }
 
-    cout << "Simulation Run Time (Seconds): " << runTime.count() / 1000 << endl;
-    cout << "Execution Time (Cycles): " << clockCycle << endl;
-    cout << "Integer: " << histogram[0] << "%" << endl;
-    cout << "Float: " << histogram[1] << "%" << endl;
-    cout << "Branch: " << histogram[2] << "%" << endl;
-    cout << "Load: " << histogram[3] << "%" << endl;
-    cout << "Store: " << histogram[4] << "%" << endl;
+    cout << "-----Simple Processor Pipeline Simulator-----" << endl;
+    cout << left << setw(21) << "Trace File";
+    cout << right << setw(24) << fileName << endl;
+    cout << left << setw(21) << "Starting Instruction";
+    cout << right << setw(24) << startLine << endl;
+    cout << left << setw(21) << "Instruction Count";
+    cout << right << setw(24) << instrCount << endl;
+    cout << left << setw(21) << "Pipeline Width";
+    cout << right << setw(24) << width << endl;
+
+    cout << "------------Simulation Statistics------------" << endl;
+    cout << left << setw(30) << "Simulation Runtime (Seconds)";
+    cout << right << setw(15) << runTime.count() / 1000 << endl;
+    cout << left << setw(30) << "Total Execution Time (Cycles)";
+    cout << right << setw(15) << clockCycle << endl;
+    cout << left << setw(30) << "Total Instructions Executed";
+    cout << right << setw(15) << totalInstructions << endl;
+
+    cout << "------------Instruction Histogram------------" << endl;
+    cout << left << setw(25) << "Instruction Type";
+    cout << right << setw(20) << "Percentage (%)" << endl;
+    cout << left << setw(31) << "(1) Integer";
+    cout << left << setw(14) << histogram[0] << endl;
+    cout << left << setw(31) << "(2) Float";
+    cout << left << setw(14) << histogram[1] << endl;
+    cout << left << setw(31) << "(3) Branch";
+    cout << left << setw(14) << histogram[2] << endl;
+    cout << left << setw(31) << "(4) Load";
+    cout << left << setw(14) << histogram[3] << endl;
+    cout << left << setw(31) << "(5) Store";
+    cout << left << setw(14) << histogram[4] << endl;
 }
 
 Simulator::Simulator(string fileName, int startLine, int instrCount, int width) {
@@ -55,7 +79,7 @@ void Simulator::start() {
 
     // event loop keeps running while there still instructions in processor or instruction queue
     while (p.size() || !iQ.isEmpty()) {
-    
+
         unsigned numInstrs = p.size();
 
         for (unsigned i = 0; i < numInstrs; i++) {
@@ -104,5 +128,5 @@ void Simulator::start() {
     auto end = high_resolution_clock::now();
     runTime = end - start;
 
-    printStatistics();
+    print();
 }

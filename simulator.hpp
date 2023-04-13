@@ -18,9 +18,8 @@ class Simulator {
         unsigned iCount[5];              // Counts the number of instructions of each type.
         duration<double, milli> runTime; // The total run time of the simulation.
 
-        // DESC: Outputs the current clock cycle, current number of executed instructions and
-        //       histogram of instructions types.
-        void printStatistics() const;        
+        // DESC: Outputs statistics about the simulation.
+        void print() const;        
     public:
         //  DESC: Constructs a new simulator with the provided parameters.
         // PARAM: file - Trace file that will be read.
