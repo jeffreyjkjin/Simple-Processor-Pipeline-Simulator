@@ -42,7 +42,9 @@ void EventList::processID(unordered_map<string, vector<tuple<unsigned, bool>>> &
     // check if dependencies are satisfied
     for (auto curr: instr.dependents) {
         if (instrs.find(curr) != instrs.end()) {
+
             for (auto search: instrs[curr]) {
+                // find latest instruction with the same PC
                 if (get<0>(search) < instr.number && !get<1>(search)) {
                     // reschedule event if dependency not satisified
                     q.push(Event(ID, instr));
@@ -59,15 +61,14 @@ void EventList::processID(unordered_map<string, vector<tuple<unsigned, bool>>> &
     }
 
     if (instr.type == Integer || instr.type == Float) {
-        // checks if corresponding execution unit is available or not
-        if (p.iBusy[instr.type - 1]) {
+        if (p.iBusy[instr.type - 1] != "") {
             // reschedule event if execution unit not available
             q.push(Event(ID, instr));
             return;
         }
 
         // occupy corresponding execution unit
-        p.iBusy[instr.type - 1] = true;
+        p.iBusy[instr.type - 1] = instr.PC;
     }
 
     q.push(Event(EX, instr));
@@ -81,16 +82,13 @@ void EventList::processID(unordered_map<string, vector<tuple<unsigned, bool>>> &
 void EventList::processEX(unordered_map<string, vector<tuple<unsigned, bool>>> &instrs, Processor &p, int width) {
     Instruction instr = q.front().instr;
 
-    if (p.stageCount[MEM] == width || p.nextInstr[EX] != instr.number) {
-        // reschedule current instruction if MEM stage is full or not next program order instruction
-        q.push(Event(EX, instr));
-        return;
-    }
-
     if (instr.type == Integer || instr.type == Float || instr.type == Branch) {
         // update status of execution units
-        p.iBusy[instr.type - 1] = false;
-        
+        if (p.iBusy[instr.type - 1] == instr.PC) {
+            p.iBusy[instr.type - 1] = "";
+        }
+
+        // update completion status of current instruction
         for (auto &search: instrs[instr.PC]) {
             if (get<0>(search) == instr.number) { 
                 get<1>(search) = true; 
@@ -98,16 +96,22 @@ void EventList::processEX(unordered_map<string, vector<tuple<unsigned, bool>>> &
             }
         }
     }
-    else {
-        // check if read/write ports are available or not
-        if (p.iBusy[instr.type - 1]) {
+
+    if (p.stageCount[MEM] == width || p.nextInstr[EX] != instr.number) {
+        // reschedule current instruction if MEM stage is full or not next program order instruction
+        q.push(Event(EX, instr));
+        return;
+    }
+
+    if (instr.type == Load || instr.type == Store) {
+        if (p.iBusy[instr.type - 1] != "") {
             // reschedule event if read/write ports not available
             q.push(Event(EX, instr));
             return;            
         }
 
         // occupy corresponding read/write ports
-        p.iBusy[instr.type-1] = true;
+        p.iBusy[instr.type-1] = instr.PC;
     }
 
     q.push(Event(MEM, instr));
@@ -121,22 +125,25 @@ void EventList::processEX(unordered_map<string, vector<tuple<unsigned, bool>>> &
 void EventList::processMEM(unordered_map<string, vector<tuple<unsigned, bool>>> &instrs, Processor &p, int width) {
     Instruction instr = q.front().instr;
 
-    if (p.stageCount[WB] == width || p.nextInstr[MEM] != instr.number) {
-        // reschedule current instruction if WB stage is full or not next program order instruction
-        q.push(Event(EX, instr));
-        return;
-    }
-
     if (instr.type == Load || instr.type == Store) {
         // update status of read/write ports
-        p.iBusy[instr.type - 1] = false;
+        if (p.iBusy[instr.type - 1] == instr.PC) {
+            p.iBusy[instr.type - 1] = "";
+        }
 
+        // update completion status of current instruction
         for (auto &search: instrs[instr.PC]) {
             if (get<0>(search) == instr.number) { 
                 get<1>(search) = true; 
                 break;
             }
         }
+    }
+
+    if (p.stageCount[WB] == width || p.nextInstr[MEM] != instr.number) {
+        // reschedule current instruction if WB stage is full or not next program order instruction
+        q.push(Event(MEM, instr));
+        return;
     }
 
     q.push(Event(WB, instr));
@@ -149,6 +156,13 @@ void EventList::processMEM(unordered_map<string, vector<tuple<unsigned, bool>>> 
 
 void EventList::processWB(Processor &p) {
     Instruction instr = q.front().instr;
+
+    if (p.nextInstr[WB] != instr.number) { 
+        // reschedule current instruction if not next instruction in program order
+        q.push(Event(WB, instr));
+        return;        
+    }
+
     p.remove(instr);
 
     p.stageCount[WB]--;
