@@ -1,5 +1,6 @@
 #include "iqueue.hpp"
 
+#include <stdexcept>
 #include <sstream>
 #include <vector>
 
@@ -7,19 +8,24 @@ IQueue::IQueue(string fileName, int startLine, int instrCount) {
     ifstream file;
     file.open(fileName);
 
-    int lineCount = 1;
+    if (!file.is_open()) {
+        // if file does not exist
+        throw invalid_argument("File '" + fileName + "' does not exist!");
+    }
+
+    int lineCount = 0;
     string line;
 
     // get to the startLine
-    while (lineCount < startLine) { 
-        getline(file, line);
-        lineCount++;
+    while (lineCount < startLine && getline(file, line)) { lineCount++; }
+
+    if (lineCount != startLine) { 
+        // if starting line is greater than the number of lines the file
+        throw out_of_range("Line " + to_string(startLine) + " does not exist in '" + fileName + "'!");
     }
 
     // read lines from the file
     while (lineCount < startLine + instrCount) {
-        getline(file, line);
-
         // get tokens from line
         vector<string> tokens = vector<string>();
         stringstream stream = stringstream(line);
@@ -39,6 +45,7 @@ IQueue::IQueue(string fileName, int startLine, int instrCount) {
         Instruction instr = Instruction(PC, type, tokens, lineCount);
         q.push(instr);
 
+        if (!getline(file, line)) { break; }
         lineCount++;
     }
 
