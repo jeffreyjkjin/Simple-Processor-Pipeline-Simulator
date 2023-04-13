@@ -19,7 +19,8 @@ void EventList::insertIF(Instruction &instr) { q.push(Event(IF, instr)); }
 void EventList::processIF(unordered_map<string, vector<tuple<unsigned, bool>>> &instrs, Processor &p, int width) {
     Instruction instr = q.front().instr;
     
-    if (p.stageCount[ID] == width) {
+    if (p.stageCount[ID] == width || p.nextInstr[IF] != instr.number) {
+        // reschedule current instruction if ID stage is full or not next program order instruction
         q.push(Event(IF, instr));
         return;
     }
@@ -31,6 +32,8 @@ void EventList::processIF(unordered_map<string, vector<tuple<unsigned, bool>>> &
 
     p.stageCount[IF]--;
     p.stageCount[ID]++;
+
+    p.nextInstr[IF]++;
 }
 
 void EventList::processID(unordered_map<string, vector<tuple<unsigned, bool>>> &instrs, Processor &p, int width) {
@@ -38,7 +41,6 @@ void EventList::processID(unordered_map<string, vector<tuple<unsigned, bool>>> &
 
     // check if dependencies are satisfied
     for (auto curr: instr.dependents) {
-
         if (instrs.find(curr) != instrs.end()) {
             for (auto search: instrs[curr]) {
                 if (get<0>(search) < instr.number && !get<1>(search)) {
@@ -50,8 +52,8 @@ void EventList::processID(unordered_map<string, vector<tuple<unsigned, bool>>> &
         }
     }
 
-    if (p.stageCount[EX] == width) {
-        // reschedule current instruction if EX stage is full
+    if (p.stageCount[EX] == width || p.nextInstr[ID] != instr.number) {
+        // reschedule current instruction if EX stage is full or not next program order instruction
         q.push(Event(ID, instr));
         return;
     }
@@ -72,13 +74,15 @@ void EventList::processID(unordered_map<string, vector<tuple<unsigned, bool>>> &
 
     p.stageCount[ID]--;
     p.stageCount[EX]++;
+
+    p.nextInstr[ID]++;
 }
 
 void EventList::processEX(unordered_map<string, vector<tuple<unsigned, bool>>> &instrs, Processor &p, int width) {
     Instruction instr = q.front().instr;
 
-    if (p.stageCount[MEM] == width) {
-        // reschedule current instruction if MEM stage is full
+    if (p.stageCount[MEM] == width || p.nextInstr[EX] != instr.number) {
+        // reschedule current instruction if MEM stage is full or not next program order instruction
         q.push(Event(EX, instr));
         return;
     }
@@ -110,13 +114,15 @@ void EventList::processEX(unordered_map<string, vector<tuple<unsigned, bool>>> &
 
     p.stageCount[EX]--;    
     p.stageCount[MEM]++;
+
+    p.nextInstr[EX]++;
 }
 
 void EventList::processMEM(unordered_map<string, vector<tuple<unsigned, bool>>> &instrs, Processor &p, int width) {
     Instruction instr = q.front().instr;
 
-    if (p.stageCount[WB] == width) {
-        // reschedule current instruction if MEM stage is full
+    if (p.stageCount[WB] == width || p.nextInstr[MEM] != instr.number) {
+        // reschedule current instruction if WB stage is full or not next program order instruction
         q.push(Event(EX, instr));
         return;
     }
@@ -137,6 +143,8 @@ void EventList::processMEM(unordered_map<string, vector<tuple<unsigned, bool>>> 
 
     p.stageCount[MEM]--;
     p.stageCount[WB]++;
+
+    p.nextInstr[MEM]++;
 }
 
 void EventList::processWB(Processor &p) {
@@ -144,4 +152,6 @@ void EventList::processWB(Processor &p) {
     p.remove(instr);
 
     p.stageCount[WB]--;
+
+    p.nextInstr[WB]++;
 }

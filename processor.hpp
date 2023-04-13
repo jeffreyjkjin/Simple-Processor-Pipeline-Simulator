@@ -21,6 +21,7 @@ class Processor {
     public:
         unsigned stageCount[5]; // Keeps track of how many instructions are in each stage.
         bool iBusy[5];          // Keeps track of structural/control hazards for each instruction.
+        unsigned nextInstr[5];  // Keeps track of the next instruction to be processed in each stage.
         
         //  DESC: Creates a new processor and queues up the first width number of instructions.
         // PARAM: iQ - A queue with instructions that will be sent to the processor queue.

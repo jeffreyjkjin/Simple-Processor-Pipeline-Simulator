@@ -6,6 +6,9 @@ Processor::Processor(IQueue &iQ, int width) {
 
     for (unsigned i = 0; i < 5; i++) { iBusy[i] = false; }
 
+    // should be the first instruction in iQ since it should be the first one to reach each stage
+    for (unsigned i = 0; i < 5; i++) { nextInstr[i] = iQ.front().number; }
+
     // add first width-th number of instructions
     for (unsigned i = 0; i < width; i++) { 
         if (!iQ.isEmpty()) { 
