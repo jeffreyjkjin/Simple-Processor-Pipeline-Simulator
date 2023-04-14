@@ -1,10 +1,12 @@
 #include <chrono>
 #include <fstream>
+#include <string>
 
 #pragma once
 
-using namespace std;
-using namespace std::chrono;
+using std::milli;
+using std::string;
+using std::chrono::duration;
 
 class Simulator {
     private:
@@ -26,7 +28,7 @@ class Simulator {
         //        startLine - First line of the file that will be read.
         //        instrCount - Last line of the file that will be read.
         //        width - Number of pipelines for the processor.
-        Simulator(string fileName, int startLine, int instrCount, int width);
+        Simulator(const string fileName, const int startLine, const int instrCount, const int width);
         // DESC: Starts the simulation. Keeps track of and prints out statistics periodically.
         //  PRE: Assumes all simulation parameters are valid.
         void start();

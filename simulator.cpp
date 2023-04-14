@@ -2,12 +2,12 @@
 
 #include <iomanip>
 #include <iostream>
-#include <unordered_map>
-#include <queue>
 
+#include "dtracker.hpp"
 #include "eventlist.hpp"
 #include "iqueue.hpp"
-#include "processor.hpp"
+
+using std::chrono::high_resolution_clock;
 
 void Simulator::print() const {
     // compute percentages for histogram
@@ -51,7 +51,7 @@ void Simulator::print() const {
     cout << left << setw(14) << histogram[4] << endl;
 }
 
-Simulator::Simulator(string fileName, int startLine, int instrCount, int width) {
+Simulator::Simulator(const string fileName, const int startLine, const int instrCount, const int width) {
     // initalize attributes
     this->fileName = fileName;
     this->startLine = startLine;
@@ -70,19 +70,14 @@ void Simulator::start() {
     auto start = high_resolution_clock::now();
 
     IQueue iQ = IQueue(fileName, startLine, instrCount);
-    
-    Processor p = Processor(iQ, width);
 
-    EventList eList = EventList(p);
+    DTracker dT;
 
-    // used to track if an instruction has been "completed" and can be used as a dependency
-    // pairs store each occurence of an instruction with the same PC
-    unordered_map<string, deque<pair<unsigned, bool>>> instrs;
+    EventList eList = EventList(dT, iQ, width);
 
     // event loop keeps running while there still instructions in processor or instruction queue
-    while (p.size() || !iQ.isEmpty()) {
-
-        unsigned numInstrs = p.size();
+    while (eList.size() || !iQ.isEmpty()) {
+        unsigned numInstrs = eList.size();
 
         for (unsigned i = 0; i < numInstrs; i++) {
             // processes every instruction in the processor
@@ -90,19 +85,19 @@ void Simulator::start() {
 
             switch (curr.stage) {
                 case IF:
-                    eList.processIF(instrs, p, width);
+                    eList.processIF(dT, width);
                     break;
                 case ID:
-                    eList.processID(instrs, p, width);
+                    eList.processID(dT, width);
                     break;
                 case EX:
-                    eList.processEX(instrs, p, width);
+                    eList.processEX(dT, width);
                     break;
                 case MEM:
-                    eList.processMEM(instrs, p, width);
+                    eList.processMEM(dT, width);
                     break;
                 case WB:
-                    eList.processWB(p);
+                    eList.processWB(dT);
 
                     iCount[curr.instr.type - 1]++;
                     totalInstructions++;
@@ -111,18 +106,7 @@ void Simulator::start() {
             eList.pop();
         }
 
-        // send next width-th number of instructions into processor
-        for (unsigned i = 0; i < width; i++) {
-            if (!iQ.isEmpty()) {
-                Instruction instr = iQ.front();
-
-                if (p.insertIF(instr, width)) { 
-                    // only send instruction if there is room in the IF stage
-                    eList.insertIF(instr);
-                    iQ.pop(); 
-                }
-            }
-        }
+        eList.fetch(dT, iQ, width);
 
         clockCycle++;
     }
