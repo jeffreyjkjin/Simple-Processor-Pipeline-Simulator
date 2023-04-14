@@ -75,7 +75,9 @@ void Simulator::start() {
 
     EventList eList = EventList(p);
 
-    unordered_map<string, vector<tuple<unsigned, bool>>> instrs;
+    // used to track if an instruction has been "completed" and can be used as a dependency
+    // pairs store each occurence of an instruction with the same PC
+    unordered_map<string, deque<pair<unsigned, bool>>> instrs;
 
     // event loop keeps running while there still instructions in processor or instruction queue
     while (p.size() || !iQ.isEmpty()) {

@@ -16,7 +16,7 @@ Event EventList::front() const { return q.front(); }
 
 void EventList::insertIF(Instruction &instr) { q.push(Event(IF, instr)); }
 
-void EventList::processIF(unordered_map<string, vector<tuple<unsigned, bool>>> &instrs, Processor &p, int width) {
+void EventList::processIF(unordered_map<string, deque<pair<unsigned, bool>>> &instrs, Processor &p, int width) {
     Instruction instr = q.front().instr;
     
     if (p.stageCount[ID] == width || p.nextInstr[IF] != instr.number) {
@@ -28,7 +28,7 @@ void EventList::processIF(unordered_map<string, vector<tuple<unsigned, bool>>> &
     // schedule ID event for current instruction
     q.push(Event(ID, instr));
 
-    instrs[instr.PC].push_back(make_tuple(instr.number, false));
+    instrs[instr.PC].push_front(make_pair(instr.number, false));
 
     p.stageCount[IF]--;
     p.stageCount[ID]++;
@@ -36,23 +36,26 @@ void EventList::processIF(unordered_map<string, vector<tuple<unsigned, bool>>> &
     p.nextInstr[IF]++;
 }
 
-void EventList::processID(unordered_map<string, vector<tuple<unsigned, bool>>> &instrs, Processor &p, int width) {
+void EventList::processID(unordered_map<string, deque<pair<unsigned, bool>>> &instrs, Processor &p, int width) {
     Instruction instr = q.front().instr;
 
-    // check if dependencies are satisfied
+    // check if data dependencies are satisfied
     for (auto curr: instr.dependents) {
         if (instrs.find(curr) != instrs.end()) {
 
             for (auto search: instrs[curr]) {
                 // find latest instruction with the same PC
                 if (get<0>(search) < instr.number && !get<1>(search)) {
-                    // reschedule event if dependency not satisified
+                    // reschedule event if dependency not satisfied
                     q.push(Event(ID, instr));
                     return;
                 }
             }
         }
     }
+    
+    // assume data dependencies are always satisified even if this instruction is rescheduled
+    instr.dependents.clear();
 
     if (p.stageCount[EX] == width || p.nextInstr[ID] != instr.number) {
         // reschedule current instruction if EX stage is full or not next program order instruction
@@ -79,11 +82,11 @@ void EventList::processID(unordered_map<string, vector<tuple<unsigned, bool>>> &
     p.nextInstr[ID]++;
 }
 
-void EventList::processEX(unordered_map<string, vector<tuple<unsigned, bool>>> &instrs, Processor &p, int width) {
+void EventList::processEX(unordered_map<string, deque<pair<unsigned, bool>>> &instrs, Processor &p, int width) {
     Instruction instr = q.front().instr;
 
     if (instr.type == Integer || instr.type == Float || instr.type == Branch) {
-        // update status of execution units
+        // update status of execution unit
         if (p.iBusy[instr.type - 1] == instr.PC) {
             p.iBusy[instr.type - 1] = "";
         }
@@ -105,12 +108,12 @@ void EventList::processEX(unordered_map<string, vector<tuple<unsigned, bool>>> &
 
     if (instr.type == Load || instr.type == Store) {
         if (p.iBusy[instr.type - 1] != "") {
-            // reschedule event if read/write ports not available
+            // reschedule event if read/write port not available
             q.push(Event(EX, instr));
             return;            
         }
 
-        // occupy corresponding read/write ports
+        // occupy corresponding read/write port
         p.iBusy[instr.type-1] = instr.PC;
     }
 
@@ -122,11 +125,11 @@ void EventList::processEX(unordered_map<string, vector<tuple<unsigned, bool>>> &
     p.nextInstr[EX]++;
 }
 
-void EventList::processMEM(unordered_map<string, vector<tuple<unsigned, bool>>> &instrs, Processor &p, int width) {
+void EventList::processMEM(unordered_map<string, deque<pair<unsigned, bool>>> &instrs, Processor &p, int width) {
     Instruction instr = q.front().instr;
 
     if (instr.type == Load || instr.type == Store) {
-        // update status of read/write ports
+        // update status of read/write port
         if (p.iBusy[instr.type - 1] == instr.PC) {
             p.iBusy[instr.type - 1] = "";
         }
