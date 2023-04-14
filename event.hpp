@@ -20,5 +20,5 @@ class Event {
         //  DESC: Creates a new event with the provided parameter.
         // PARAM: stage - The stage that the instruction is currently in.
         //        instr - The instruction associated with this event.
-        Event(Stage stage, Instruction instr) : stage(stage), instr(instr) {};
+        Event(const Stage stage, const Instruction instr) : stage(stage), instr(instr) {};
 };

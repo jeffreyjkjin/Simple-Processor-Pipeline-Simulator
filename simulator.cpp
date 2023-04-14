@@ -8,6 +8,13 @@
 #include "iqueue.hpp"
 
 using std::chrono::high_resolution_clock;
+using std::cout;
+using std::endl;
+using std::fixed;
+using std::left;
+using std::right;
+using std::setprecision;
+using std::setw;
 
 void Simulator::print() const {
     // compute percentages for histogram

@@ -1,10 +1,18 @@
 #include "iqueue.hpp"
 
-#include <stdexcept>
 #include <sstream>
+#include <stdexcept>
+#include <string>
 #include <vector>
 
-IQueue::IQueue(string fileName, int startLine, int instrCount) {
+using std::ifstream;
+using std::invalid_argument;
+using std::out_of_range;
+using std::stringstream;
+using std::getline;
+using std::to_string;
+
+IQueue::IQueue(const string fileName, const int startLine, const int instrCount) {
     ifstream file;
     file.open(fileName);
 

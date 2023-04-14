@@ -3,8 +3,10 @@
 
 #include "simulator.hpp"
 
-using namespace std;
- 
+using std::invalid_argument;
+using std::stoi;
+using std::string;
+
 int main(int argc, char *argv[]) {
     if (argc < 5) {
         // if the user does not provide enough parameters

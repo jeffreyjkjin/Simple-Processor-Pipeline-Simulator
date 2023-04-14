@@ -3,7 +3,8 @@
 
 #pragma once
 
-using namespace std;
+using std::string;
+using std::vector;
 
 // Type of program instructions.
 typedef enum {
@@ -26,6 +27,6 @@ class Instruction {
         // PARAM: PC - Program counter.
         //        type - Type of instruction.
         //        dependents - List of dependencies that the current instruction relies on.
-        Instruction(string PC, iType type, vector<string> dependents, unsigned number): 
+        Instruction(const string PC, const iType type, const vector<string> dependents, const unsigned number): 
             PC(PC), type(type), dependents(dependents), number(number) {};
 };

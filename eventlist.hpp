@@ -6,8 +6,6 @@
 
 #pragma once
 
-using std::queue;
-
 // Queue of events that occur in the simulation.
 class EventList {
     private:

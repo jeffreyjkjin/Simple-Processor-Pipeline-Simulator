@@ -1,5 +1,7 @@
 #include "eventlist.hpp"
 
+using std::make_pair;
+
 EventList::EventList(DTracker &dT, IQueue &iQ, const int width) {
     // initalize attributes
     for (unsigned i = 0; i < 5; i++) { dT.stageCount[i] = 0; }

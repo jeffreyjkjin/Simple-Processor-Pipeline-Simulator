@@ -5,7 +5,7 @@
 
 #pragma once
 
-using namespace std;
+using std::queue;
 
 // Queue of instructions read from the provided file.
 class IQueue {
@@ -18,7 +18,7 @@ class IQueue {
         // PARAM: file - Trace file that will be read.
         //        lineStart - First line of the file that will be read.
         //        instrCount - Number of instructions to be read from the file.
-        IQueue(string fileName, int startLine, int instrCount);
+        IQueue(const string fileName, const int startLine, const int instrCount);
         // DESC: Removes the first instruction at the front of the queue.
         //  PRE: Queue must not be empty.
         void pop();
