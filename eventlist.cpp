@@ -1,25 +1,59 @@
 #include "eventlist.hpp"
 
-EventList::EventList(Processor &p) {
+EventList::EventList(DTracker &dT, IQueue &iQ, const int width) {
+    // initalize attributes
+    for (unsigned i = 0; i < 5; i++) { dT.stageCount[i] = 0; }
+
+    for (unsigned i = 0; i < 5; i++) { dT.iBusy[i] = ""; }
+    
     // schedule IFs for the first width-th number of instructions
-    unsigned i = 0;
-    for (auto instr: p) { 
+    while (!iQ.isEmpty() && dT.stageCount[IF] < width) {
+        Instruction instr = iQ.front();
+        iQ.pop();
+
         q.push(Event(IF, instr));
 
-        i++;
+        dT.stageCount[IF]++;
+
+        if (instr.type == Branch) {
+            // stop fetching instructions if latest instruction is a branch
+            dT.iBusy[Branch - 1] = instr.PC;
+            return;
+        }
     }
+
+    // should be the first instruction in iQ since it should be the first one to reach each stage
+    for (unsigned i = 0; i < 5; i++) { dT.nextInstr[i] = q.front().instr.number; }
 }
 
 void EventList::pop() { q.pop(); }
 
 Event EventList::front() const { return q.front(); }
 
-void EventList::insertIF(Instruction &instr) { q.push(Event(IF, instr)); }
+int EventList::size() const { return q.size(); }
 
-void EventList::processIF(unordered_map<string, deque<pair<unsigned, bool>>> &instrs, Processor &p, int width) {
+void EventList::fetch(DTracker &dT, IQueue &iQ, const int width) {
+    // schedule IFs for at most the next width-th instructions
+    while (!iQ.isEmpty() && dT.stageCount[IF] < width && dT.iBusy[Branch - 1] == "") {
+        Instruction instr = iQ.front();
+        iQ.pop();
+
+        q.push(Event(IF, instr));
+
+        dT.stageCount[IF]++;
+
+        if (instr.type == Branch) {
+            // stop fetching instructions if latest instruction is a branch
+            dT.iBusy[Branch - 1] = instr.PC;
+            return;
+        }
+    }
+}
+
+void EventList::processIF(DTracker &dT, int width) {
     Instruction instr = q.front().instr;
     
-    if (p.stageCount[ID] == width || p.nextInstr[IF] != instr.number) {
+    if (dT.stageCount[ID] == width || dT.nextInstr[IF] != instr.number) {
         // reschedule current instruction if ID stage is full or not next program order instruction
         q.push(Event(IF, instr));
         return;
@@ -28,24 +62,24 @@ void EventList::processIF(unordered_map<string, deque<pair<unsigned, bool>>> &in
     // schedule ID event for current instruction
     q.push(Event(ID, instr));
 
-    instrs[instr.PC].push_front(make_pair(instr.number, false));
+    dT.instrs[instr.PC].push_front(make_pair(instr.number, false));
 
-    p.stageCount[IF]--;
-    p.stageCount[ID]++;
+    dT.stageCount[IF]--;
+    dT.stageCount[ID]++;
 
-    p.nextInstr[IF]++;
+    dT.nextInstr[IF]++;
 }
 
-void EventList::processID(unordered_map<string, deque<pair<unsigned, bool>>> &instrs, Processor &p, int width) {
+void EventList::processID(DTracker &dT, const int width) {
     Instruction instr = q.front().instr;
 
     // check if data dependencies are satisfied
     for (auto curr: instr.dependents) {
-        if (instrs.find(curr) != instrs.end()) {
+        if (dT.instrs.find(curr) != dT.instrs.end()) {
 
-            for (auto search: instrs[curr]) {
+            for (auto search: dT.instrs[curr]) {
                 // find latest instruction with the same PC
-                if (get<0>(search) < instr.number && !get<1>(search)) {
+                if (search.first < instr.number && !search.second) {
                     // reschedule event if dependency not satisfied
                     q.push(Event(ID, instr));
                     return;
@@ -57,93 +91,93 @@ void EventList::processID(unordered_map<string, deque<pair<unsigned, bool>>> &in
     // assume data dependencies are always satisified even if this instruction is rescheduled
     instr.dependents.clear();
 
-    if (p.stageCount[EX] == width || p.nextInstr[ID] != instr.number) {
+    if (dT.stageCount[EX] == width || dT.nextInstr[ID] != instr.number) {
         // reschedule current instruction if EX stage is full or not next program order instruction
         q.push(Event(ID, instr));
         return;
     }
 
     if (instr.type == Integer || instr.type == Float) {
-        if (p.iBusy[instr.type - 1] != "") {
-            // reschedule event if execution unit not available
+        if (dT.iBusy[instr.type - 1] != "") {
+            // reschedule event if structural dependency not avaliable
             q.push(Event(ID, instr));
             return;
         }
 
-        // occupy corresponding execution unit
-        p.iBusy[instr.type - 1] = instr.PC;
+        // occupy corresponding structural dependency
+        dT.iBusy[instr.type - 1] = instr.PC;
     }
 
     q.push(Event(EX, instr));
 
-    p.stageCount[ID]--;
-    p.stageCount[EX]++;
+    dT.stageCount[ID]--;
+    dT.stageCount[EX]++;
 
-    p.nextInstr[ID]++;
+    dT.nextInstr[ID]++;
 }
 
-void EventList::processEX(unordered_map<string, deque<pair<unsigned, bool>>> &instrs, Processor &p, int width) {
+void EventList::processEX(DTracker &dT, const int width) {
     Instruction instr = q.front().instr;
 
     if (instr.type == Integer || instr.type == Float || instr.type == Branch) {
-        // update status of execution unit
-        if (p.iBusy[instr.type - 1] == instr.PC) {
-            p.iBusy[instr.type - 1] = "";
+        // update structural/control hazards
+        if (dT.iBusy[instr.type - 1] == instr.PC) {
+            dT.iBusy[instr.type - 1] = "";
         }
 
         // update completion status of current instruction
-        for (auto &search: instrs[instr.PC]) {
-            if (get<0>(search) == instr.number) { 
-                get<1>(search) = true; 
+        for (auto &search: dT.instrs[instr.PC]) {
+            if (search.first == instr.number) { 
+                search.second = true; 
                 break;
             }
         }
     }
 
-    if (p.stageCount[MEM] == width || p.nextInstr[EX] != instr.number) {
+    if (dT.stageCount[MEM] == width || dT.nextInstr[EX] != instr.number) {
         // reschedule current instruction if MEM stage is full or not next program order instruction
         q.push(Event(EX, instr));
         return;
     }
 
     if (instr.type == Load || instr.type == Store) {
-        if (p.iBusy[instr.type - 1] != "") {
-            // reschedule event if read/write port not available
+        if (dT.iBusy[instr.type - 1] != "") {
+            // reschedule event if structural dependency not available
             q.push(Event(EX, instr));
             return;            
         }
 
-        // occupy corresponding read/write port
-        p.iBusy[instr.type-1] = instr.PC;
+        // occupy corresponding structural dependency
+        dT.iBusy[instr.type-1] = instr.PC;
     }
 
     q.push(Event(MEM, instr));
 
-    p.stageCount[EX]--;    
-    p.stageCount[MEM]++;
+    dT.stageCount[EX]--;    
+    dT.stageCount[MEM]++;
 
-    p.nextInstr[EX]++;
+    dT.nextInstr[EX]++;
 }
 
-void EventList::processMEM(unordered_map<string, deque<pair<unsigned, bool>>> &instrs, Processor &p, int width) {
+void EventList::processMEM(DTracker &dT, const int width) {
     Instruction instr = q.front().instr;
 
     if (instr.type == Load || instr.type == Store) {
-        // update status of read/write port
-        if (p.iBusy[instr.type - 1] == instr.PC) {
-            p.iBusy[instr.type - 1] = "";
+        // update structural hazards
+        if (dT.iBusy[instr.type - 1] == instr.PC) {
+            dT.iBusy[instr.type - 1] = "";
         }
 
         // update completion status of current instruction
-        for (auto &search: instrs[instr.PC]) {
-            if (get<0>(search) == instr.number) { 
-                get<1>(search) = true; 
+        for (auto &search: dT.instrs[instr.PC]) {
+            if (search.first == instr.number) { 
+                search.second = true; 
                 break;
             }
         }
     }
 
-    if (p.stageCount[WB] == width || p.nextInstr[MEM] != instr.number) {
+    if (dT.stageCount[WB] == width || dT.nextInstr[MEM] != instr.number) {
         // reschedule current instruction if WB stage is full or not next program order instruction
         q.push(Event(MEM, instr));
         return;
@@ -151,24 +185,22 @@ void EventList::processMEM(unordered_map<string, deque<pair<unsigned, bool>>> &i
 
     q.push(Event(WB, instr));
 
-    p.stageCount[MEM]--;
-    p.stageCount[WB]++;
+    dT.stageCount[MEM]--;
+    dT.stageCount[WB]++;
 
-    p.nextInstr[MEM]++;
+    dT.nextInstr[MEM]++;
 }
 
-void EventList::processWB(Processor &p) {
+void EventList::processWB(DTracker &dT) {
     Instruction instr = q.front().instr;
 
-    if (p.nextInstr[WB] != instr.number) { 
+    if (dT.nextInstr[WB] != instr.number) { 
         // reschedule current instruction if not next instruction in program order
         q.push(Event(WB, instr));
         return;        
     }
 
-    p.remove(instr);
+    dT.stageCount[WB]--;
 
-    p.stageCount[WB]--;
-
-    p.nextInstr[WB]++;
+    dT.nextInstr[WB]++;
 }

@@ -1,26 +1,12 @@
-#include "instruction.hpp"
-
-#include <unordered_map>
 #include <queue>
 
+#include "dtracker.hpp"
+#include "event.hpp"
 #include "iqueue.hpp"
-#include "processor.hpp"
 
 #pragma once
 
-using namespace std;
-
-// Events in the event list.
-class Event {
-    public:
-        Stage stage;       // The current stage that the associated instruction is in.
-        Instruction instr; // The instruction associated with this event. 
-
-        //  DESC: Creates a new event with the provided parameter.
-        // PARAM: stage - The stage that the instruction is currently in.
-        //        instr - The instruction associated with this event.
-        Event(Stage stage, Instruction &instr) : stage(stage), instr(instr) {};
-};
+using std::queue;
 
 // Queue of events that occur in the simulation.
 class EventList {
@@ -29,67 +15,63 @@ class EventList {
 
     public:
         //  DESC: Constructs a new event list and schedules IF events for the first width-th 
-        //        instructions fetched by the processor; stops fetching if a branch is fetched.
-        //   PRE: Assume processor has the first width-th number of instructions.
-        // PARAM: p - Queue of instructions.
-        EventList(Processor &p);
+        //        instructions in the instruction queue; stops fetching if a branch is fetched.
+        // PARAM: dT - Tracks dependencies for program instructions.
+        //        iQ - Queue of instructions that haven't been fetched yet.
+        //        width - The maximum number of instructions that can be in the IF stage.
+        EventList(DTracker &dT, IQueue &iQ, const int width);
         // DESC: Removes the first event in the eventlist.
         //  PRE: Assume eventlist is not empty.
         void pop();
         // DESC: Returns the first event in the eventlist.
         //  PRE: Assume eventlist is not empty.
         Event front() const;
-        //  DESC: Schedules a new event for the provided instruction at the back of the queue in 
-        //        the IF stage.
-        //   PRE: Assume there is room for the new instruction to enter the IF stage.
-        // PARAM: instr - The instruction that will be added to the queue.
-        void insertIF(Instruction &instr);
+        // DESC: Returns the number of events in the eventlist.
+        int size() const;
+        //  DESC: Schedules at most, width-th instructions into the event list in the IF stage.
+        // PARAM: dT - Tracks dependencies for program instructions.
+        //        iQ - Queue of instructions that haven't been fetched yet.
+        //        width - The maximum number of instructions that can be in the IF stage.
+        void fetch(DTracker &dT, IQueue &iQ, const int width);
         //  DESC: The current instruction is processed in the IF stage.
-        // PARAM: instrs - Hashtable containing previous instructions that are in progress or have
-        //                 been completed.
-        //        p - Processor queue that contains the current instructions.
+        // PARAM: dT - Tracks dependencies for program instructions.
         //        width - Maximum number of instructions that can be in each stage.
         //  POST: The current instruction moves to the ID stage; remains in the current stage if 
-        //        the next stage is full.
-        void processIF(unordered_map<string, deque<pair<unsigned, bool>>> &instrs, Processor &p, int width);
+        //        the next stage is full or they are not the next instruction in program order.
+        void processIF(DTracker &dT, const int width);
         //  DESC: The current instruction is processed in the IF stage. Integer and float
-        //        instructions utilize their corresponding execution units.
-        // PARAM: instrs - Hashtable containing previous instructions that are in progress or have
-        //                 been completed.
-        //        p - Processor queue that contains the current instructions.
+        //        instructions utilize their corresponding structural dependencies.
+        // PARAM: dT - Tracks dependencies for program instructions.
         //        width - Maximum number of instructions that can be in each stage.
         //  POST: The current instruction moves to the EX stage; remains in the current stage if 
-        //        the next stage is full. Integer and float instructions only move onto the EX 
-        //        stage if their corresponding execution units are available and dependencies are
-        //        satified.
-        void processID(unordered_map<string, deque<pair<unsigned, bool>>> &instrs, Processor &p, int width);
+        //        the next stage is full or they are not the next instruction in program order. 
+        //        Integer and float instructions only move onto the EX stage if their corresponding
+        //        structural and data dependencies are satisfied.
+        void processID(DTracker &dT, const int width);
         //  DESC: The current instruction is processed in the ID stage. Integer, float and branches
-        //        finish using their corresponding execution units. Load and store instructions
-        //        occupy their read/write ports.
-        // PARAM: instrs - Hashtable containing previous instructions that are in progress or have
-        //                 been completed.
-        //        p - Processor queue that contains the current instructions.
+        //        finish using their structural dependencies. Load and store instructions
+        //        occupy their structural dependencies.
+        // PARAM: dT - Tracks dependencies for program instructions.
         //        width - Maximum number of instructions that can be in each stage.
         //  POST: The current instruction moves to the MEM stage; remains in the current stage if 
-        //        the next stage is full. Integer, float and branch execution units are available
-        //        after the corresponding instruction finishes this stage and their PC addresses 
-        //        are stored in instrs so they can be used as dependencies for other instructions.
-        //        Load and store instructions only move onto the MEM stage if their read/write 
-        //        ports are available and dependencies are satisifed.
-        void processEX(unordered_map<string, deque<pair<unsigned, bool>>> &instrs, Processor &p, int width);
+        //        the next stage is full or they are not the next instruction in program order. 
+        //        Integer, float and branch structural dependencies are available after the 
+        //        corresponding instruction finishes this stage and their PC addresses are stored 
+        //        in dT.instrs so they can be used as dependencies for other instructions. Load and
+        //        store instructions only move onto the MEM stage if their structural and data 
+        //        dependencies are satisifed.
+        void processEX(DTracker &dT, const int width);
         //  DESC: The current instruction is processed in the MEM stage. Load and store
-        //        instructions finish using their read/write ports. 
-        // PARAM: instrs - Hashtable containing previous instructions that are in progress or have
-        //                 been completed.
-        //        p - Processor queue that contains the current instructions.
+        //        instructions finish using their structural dependencies. 
+        // PARAM: dT - Tracks dependencies for program instructions.
         //        width - Maximum number of instructions that can be in each stage.
         //  POST: The current instruction moves to the WB stage; remains in the current stage if 
-        //        the next stage is full. Load and store read/write ports are available ater the
-        //        corresponding instruction finishes this stage and their PC addresses are stored
-        //        in instrs so they can be used as dependencies for other instructions.
-        void processMEM(unordered_map<string, deque<pair<unsigned, bool>>> &instrs, Processor &p, int width);
+        //        the next stage is full they are not the next instruction in program order. Load 
+        //        and store structural dependencies are available ater the corresponding instruction 
+        //        finishes this stage and their PC addresses are stored in dT.instrs so they can be
+        //        used as dependencies for other instructions.
+        void processMEM(DTracker &dT, const int width);
         //  DESC: The current instruction is processed in the WB stage.
-        // PARAM: p - Processor queue that contains the current instructions.
-        //  POST: The current instruction is removed from the processor.
-        void processWB(Processor &p);
+        //  POST: The current instruction is retired and no longer exists in the event list.
+        void processWB(DTracker &dT);
 };
