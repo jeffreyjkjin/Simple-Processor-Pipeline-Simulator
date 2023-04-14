@@ -58,13 +58,9 @@ void Simulator::print() const {
     cout << left << setw(14) << histogram[4] << endl;
 }
 
-Simulator::Simulator(const string fileName, const int startLine, const int instrCount, const int width) {
+Simulator::Simulator(const string fileName, const int startLine, const int instrCount, const int width):
+    fileName(fileName), startLine(startLine), instrCount(instrCount), width(width) {
     // initalize attributes
-    this->fileName = fileName;
-    this->startLine = startLine;
-    this->instrCount = instrCount;
-    this->width = width;
-
     totalInstructions = 0;
     clockCycle = 0;
     for (unsigned i = 0; i < 5; i++) { iCount[i] = 0; }
@@ -77,15 +73,13 @@ void Simulator::start() {
     auto start = high_resolution_clock::now();
 
     IQueue iQ = IQueue(fileName, startLine, instrCount);
-
     DTracker dT;
-
     EventList eList = EventList(dT, iQ, width);
 
     // event loop keeps running while there still instructions in processor or instruction queue
     while (eList.size() || !iQ.isEmpty()) {
-        unsigned numInstrs = eList.size();
 
+        unsigned numInstrs = eList.size();
         for (unsigned i = 0; i < numInstrs; i++) {
             // processes every instruction in the processor
             Event curr = eList.front();
