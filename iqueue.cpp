@@ -5,12 +5,13 @@
 #include <string>
 #include <vector>
 
+using std::getline;
 using std::ifstream;
 using std::invalid_argument;
 using std::out_of_range;
 using std::stringstream;
-using std::getline;
 using std::to_string;
+using std::vector;
 
 IQueue::IQueue(const string fileName, const int startLine, const int instrCount) {
     ifstream file;
@@ -35,7 +36,7 @@ IQueue::IQueue(const string fileName, const int startLine, const int instrCount)
     // read lines from the file
     while (lineCount < startLine + instrCount) {
         // get tokens from line
-        vector<string> tokens = vector<string>();
+        vector<string> tokens;
         stringstream stream = stringstream(line);
         while (stream.good()) {
             string token;
