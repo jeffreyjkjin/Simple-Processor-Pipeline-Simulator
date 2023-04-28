@@ -2,7 +2,7 @@
 This program produces a cycle-accurate simulation of a W-wide superscalar in-order processor with five stages that models how each instruction moves through the pipeline. The five stages include instruction fetch (IF), instruction decode and read operands (ID), instruction issue and execute (EX), memory access (MEM), and writeback results and retire (WB). The simulated processor has a single integer ALU, floating point unit, branch execution unit, read port, and write port.
 
 ### Simplifications
-The following assumptions are made to simplify the simulator's logic:
+The following assumptions were made to simplify the simulator's logic:
 - No branch prediction
 - Instructions fetches hit in the L1 data cache in one cycle 
 - Load and store instructions hit in the L1 data cache in one cycle
